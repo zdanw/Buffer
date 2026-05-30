@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <!-- ==================== 页面元信息 ==================== -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buffer社交内容发布系统</title>
+    
+    <!-- 样式文件 -->
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- ==================== 页面头部 ==================== -->
+        <div class="header">
+            <h1>Buffer社交内容发布系统</h1>
+            <p>集成Doubao AI，自动生成社交媒体内容并发布到多平台</p>
+        </div>
+
+        <!-- ==================== 标签页导航 ==================== -->
+        <div class="tabs">
+            <button class="tab active" onclick="window.appUtils.switchTab('publish')">内容发布</button>
+            <button class="tab" onclick="window.appUtils.switchTab('knowledge')">知识库管理</button>
+            <button class="tab" onclick="window.appUtils.switchTab('products')">产品管理</button>
+        </div>
+
+        <!-- ==================== 内容发布标签页 ==================== -->
+        <div id="publish-tab" class="tab-content active">
+            <!-- 发布模式选择 -->
+            <div class="card">
+                <h2 class="card-title">发布模式选择</h2>
+                <div class="mode-switch">
+                    <!-- 全自动模式：一键生成并发布 -->
+                    <div class="mode-option active" data-mode="auto">
+                        <h3>全自动模式</h3>
+                        <p>输入产品名称，系统自动完成所有流程</p>
+                    </div>
+                    <!-- 半自动模式：预览后手动发布 -->
+                    <div class="mode-option" data-mode="semi_auto">
+                        <h3>半自动模式</h3>
+                        <p>预览生成内容后，手动确认发布</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 产品选择区域 -->
+            <div class="card">
+                <h2 class="card-title">产品选择</h2>
+                <!-- 搜索输入框 -->
+                <div class="form-group">
+                    <label for="productInput">输入产品关键词</label>
+                    <input type="text" id="productInput" placeholder="例如：夜灯、Bebcare">
+                </div>
+                <button class="btn btn-primary" onclick="window.appPublish.searchProducts()">搜索产品</button>
+                
+                <!-- 搜索结果列表 -->
+                <div id="searchResults" class="search-results"></div>
+                
+                <!-- 已选择的产品显示区域 -->
+                <div class="form-group" style="margin-top: 30px; border-top: 2px solid #eee; padding-top: 20px;">
+                    <label>已选择的产品</label>
+                    <div id="selectedProduct" class="selected-product-card" style="display: none;">
+                        <div style="display: flex; gap: 15px;">
+                            <img id="selectedProductImage" src="" alt="产品图片" style="width: 100px; height: 100px; object-fit: cover; border-radius: 8px;">
+                            <div style="flex: 1;">
+                                <h4 id="selectedProductName" style="margin: 0 0 5px 0;"></h4>
+                                <p id="selectedProductContent" style="margin: 0; color: #888; font-size: 0.9rem;"></p>
+                            </div>
+                        </div>
+                    </div>
+                    <p id="noProductSelected" style="color: #888; margin: 0;">请先搜索并选择一个产品</p>
+                </div>
+                
+                <!-- 发布平台选择 -->
+                <div class="form-group" style="margin-top: 30px; border-top: 2px solid #eee; padding-top: 20px;">
+                    <label>选择发布平台</label>
+                    <div class="platform-checkboxes">
+                        <label><input type="checkbox" name="publishPlatform" value="tiktok" checked> 🎵 TikTok</label>
+                        <label><input type="checkbox" name="publishPlatform" value="instagram" checked> 📷 Instagram</label>
+                        <label><input type="checkbox" name="publishPlatform" value="facebook" checked> 📘 Facebook</label>
+                    </div>
+                </div>
+                
+                <!-- 定时发布设置 -->
+                <div class="form-group" style="margin-top: 30px; border-top: 2px solid #eee; padding-top: 20px;">
+                    <label for="scheduleTime">定时发布（可选）</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="datetime-local" id="scheduleTime" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                            <input type="checkbox" id="enableSchedule" onchange="toggleScheduleTime()">
+                            <span>启用定时</span>
+                        </label>
+                    </div>
+                    <p style="color: #888; font-size: 0.85rem; margin-top: 5px;">
+                        如果不启用定时，内容将立即发布到所选平台
+                    </p>
+                </div>
+                
+                <!-- 操作按钮 -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px;">
+                    <button class="btn btn-success" id="startButton" onclick="window.appPublish.startProcess()" disabled>
+                        🚀 生成新内容
+                    </button>
+                    <button class="btn btn-primary" id="publishExistingButton" onclick="window.appPublish.publishExistingContent()" disabled>
+                        📢 直接发布
+                    </button>
+                </div>
+                <p style="text-align: center; color: #888; font-size: 0.85rem; margin-top: 10px;">
+                    请先搜索并选择一个产品
+                </p>
+            </div>
+
+            <!-- 内容预览区域 -->
+            <div class="card preview-section" id="previewSection">
+                <h2 class="card-title">生成内容预览</h2>
+                <div id="statusMessage"></div>
+                
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>生成的图片</label>
+                        <img id="generatedImage" class="image-preview" src="" alt="生成的图片">
+                    </div>
+                    <div class="form-group">
+                        <label>生成的文案</label>
+                        <div id="generatedContent" class="content-preview"></div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>当前选择的发布平台</label>
+                    <div id="selectedPlatformsDisplay" style="padding: 15px; background: #f8f9fa; border-radius: 8px;"></div>
+                </div>
+
+                <div id="actionButtons">
+                    <button class="btn btn-secondary" onclick="window.appPublish.regenerateContent()">重新生成文案</button>
+                    <button class="btn btn-secondary" onclick="window.appPublish.regenerateImage()">重新生成图片</button>
+                    <button class="btn btn-secondary" onclick="window.appPublish.regenerateBoth()">重新生成全部</button>
+                    <button class="btn btn-success" onclick="window.appPublish.publishContent()">发布内容</button>
+                </div>
+            </div>
+
+            <!-- 发布结果显示区域 -->
+            <div class="card preview-section" id="publishResultSection">
+                <h2 class="card-title">发布结果</h2>
+                <div id="publishResults"></div>
+            </div>
+        </div>
+
+        <!-- ==================== 知识库管理标签页 ==================== -->
+        <div id="knowledge-tab" class="tab-content">
+            <!-- 新增知识库内容 -->
+            <div class="card">
+                <h2 class="card-title">新增知识库内容</h2>
+                <!-- 产品名称选择 -->
+                <div class="form-group">
+                    <label for="newProductName">产品名称</label>
+                    <select id="newProductName">
+                        <option value="">选择产品...</option>
+                    </select>
+                </div>
+                <!-- 产品描述显示 -->
+                <div class="form-group">
+                    <label>产品描述</label>
+                    <div id="productDescriptionDisplay" style="padding: 12px; background: #f8f9fa; border-radius: 8px; min-height: 60px; border: 1px solid #eee; color: #666;">
+                        请选择产品以查看描述
+                    </div>
+                </div>
+                <!-- AI 生成文案按钮 -->
+                <button class="btn btn-primary" id="generateContentBtn" onclick="window.appKnowledge.generateContentForKnowledge()">✨ 生成文案</button>
+                <!-- 文案内容输入 -->
+                <div class="form-group">
+                    <label for="newContent">文案内容</label>
+                    <textarea id="newContent" rows="3" placeholder="输入发布到社交平台的文字内容"></textarea>
+                </div>
+                <!-- 图片生成提示词 -->
+                <div class="form-group">
+                    <label for="newPrompt">Prompt（图片生成提示词）</label>
+                    <textarea id="newPrompt" rows="2" placeholder="确保产品不变性，以及产品bebcare品牌的logo准确性"></textarea>
+                </div>
+                <!-- 图片文件选择 -->
+                <div class="form-group">
+                    <label for="newImageFile">选择图片</label>
+                    <input type="file" id="newImageFile" accept="image/*" onchange="window.appUtils.previewImage(event)">
+                    <div id="imagePreview" style="margin-top: 10px; display: none;">
+                        <img id="previewImg" src="" alt="预览图片" style="max-width: 300px; max-height: 200px; border-radius: 8px;">
+                    </div>
+                </div>
+                <button id="addToKnowledgeBtn" class="btn btn-success" onclick="window.appKnowledge.addNewEntry()">添加到知识库</button>
+            </div>
+
+            <!-- 知识库内容管理 -->
+            <div class="card">
+                <h2 class="card-title">知识库内容管理</h2>
+                <div class="form-group">
+                    <label>搜索/筛选</label>
+                    <input type="text" id="knowledgeSearch" placeholder="搜索知识库内容...">
+                    <button class="btn btn-secondary btn-sm" style="margin-top: 10px;" onclick="window.appKnowledge.loadKnowledgeBase()">刷新</button>
+                </div>
+                <div id="knowledgeList" class="knowledge-list"></div>
+            </div>
+        </div>
+
+        <!-- ==================== 产品管理标签页 ==================== -->
+        <div id="products-tab" class="tab-content">
+            <div class="card">
+                <h2 class="card-title">产品管理</h2>
+                
+                <!-- 添加新产品表单 -->
+                <div class="form-group">
+                    <label for="newProductNameInput">产品名称</label>
+                    <input type="text" id="newProductNameInput" placeholder="输入产品名称">
+                </div>
+                <div class="form-group">
+                    <label for="newProductDescription">产品描述</label>
+                    <textarea id="newProductDescription" rows="2" placeholder="输入产品描述（可选）"></textarea>
+                </div>
+                <button class="btn btn-primary" onclick="window.appProducts.addProduct()">添加产品</button>
+                
+                <!-- 产品列表 -->
+                <div class="form-group">
+                    <h3>产品列表</h3>
+                    <div id="productList" class="product-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== 编辑模态框 ==================== -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <h2 class="card-title">编辑条目</h2>
+            <div id="editForm">
+                <div class="form-group">
+                    <label for="editProductName">产品名称</label>
+                    <select id="editProductName">
+                        <option value="">选择产品...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editContent">文案内容</label>
+                    <textarea id="editContent" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="editPrompt">Prompt</label>
+                    <textarea id="editPrompt" rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>图片预览与更换</label>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <img id="editImagePreview" src="https://via.placeholder.com/200x200?text=暂无图片" alt="图片预览" style="max-width: 200px; max-height: 200px; border-radius: 8px; border: 1px solid #eee;">
+                        <input type="text" id="editImageUrl" placeholder="输入图片URL" style="width: 100%;">
+                        <div style="display: flex; gap: 10px;">
+                            <button class="btn btn-secondary btn-sm" onclick="window.appUtils.previewEditImage()">预览图片</button>
+                            <button class="btn btn-info btn-sm" onclick="window.appUtils.clearEditImage()">清除图片</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="window.appKnowledge.saveEdit()">保存</button>
+                    <button class="btn btn-secondary" onclick="window.appUtils.closeEditModal()">取消</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== JavaScript 模块加载 ==================== -->
+    <script type="module" src="/static/js/app.js"></script>
+</body>
+</html>

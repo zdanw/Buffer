@@ -1,0 +1,42 @@
+# 虚拟环境
+myenv/
+venv/
+.env
+
+# 日志文件
+logs/
+*.log
+
+# 数据库文件
+data/chroma_db/
+app/data/products.json
+
+# 上传文件
+uploads/
+
+# Python 缓存
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDE 文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+# 环境变量
+.env
+.env.local
+.env.production
+
+# 测试文件
+.pytest_cache/
+.coverage
+htmlcov/
