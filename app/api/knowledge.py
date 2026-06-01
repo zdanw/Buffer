@@ -35,7 +35,7 @@ def allowed_file(filename):
 def search():
     keyword = request.args.get('keyword', '')
     limit = int(request.args.get('limit', 10))
-    threshold = float(request.args.get('threshold', 0.3))
+    threshold = float(request.args.get('threshold', 0.5))
     
     results = search_knowledge_base(keyword, n_results=limit, threshold=threshold)
     return jsonify({"results": results})

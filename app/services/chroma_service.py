@@ -164,6 +164,16 @@ def search_knowledge_base(keyword, n_results=10, threshold=0.3):
             })
     
     filtered_results = [r for r in all_results if r['similarity'] >= threshold]
+    
+    keyword_lower = keyword.lower()
+    filtered_results = [
+        r for r in filtered_results 
+        if keyword_lower in r.get('产品名称', '').lower() or
+           keyword_lower in r.get('文案内容', '').lower() or
+           keyword_lower in r.get('prompt', '').lower() or
+           (isinstance(r.get('标签'), list) and any(keyword_lower in str(tag).lower() for tag in r['标签']))
+    ]
+    
     filtered_results.sort(key=lambda x: x['composite_score'], reverse=True)
     final_results = filtered_results[:n_results]
     
@@ -172,16 +182,22 @@ def search_knowledge_base(keyword, n_results=10, threshold=0.3):
 
 
 def calculate_composite_score(entry, keyword, base_similarity):
-    score = base_similarity * 0.5
+    score = base_similarity * 0.7
     keyword_lower = keyword.lower()
     
     product_name = entry.get('产品名称', '').lower()
-    if keyword_lower in product_name or product_name in keyword_lower:
-        score += 0.3
+    if keyword_lower in product_name:
+        score += 0.2
+    elif product_name in keyword_lower:
+        score += 0.1
     
     content = entry.get('文案内容', '').lower()
     if keyword_lower in content:
-        score += 0.1
+        score += 0.05
+    
+    prompt = entry.get('prompt', '').lower()
+    if keyword_lower in prompt:
+        score += 0.05
     
     return min(score, 1.0)
 
