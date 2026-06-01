@@ -66,7 +66,9 @@ c:\IDE_pro_Buffer/
 │   ├── logs/                # 日志文件目录
 │   └── products.json        # 产品列表配置
 ├── models/                 # AI模型缓存目录
-│   └── huggingface/        # HuggingFace模型缓存
+│   ├── huggingface/        # HuggingFace模型缓存
+│   ├── clip-vit-base-patch32/  # CLIP图像模型
+│   └── qwen3-embedding-0.6b/   # Qwen3嵌入模型
 ├── run.py                  # 开发环境启动脚本
 ├── wsgi.py                 # 生产环境WSGI入口
 ├── requirements.txt        # Python依赖列表
