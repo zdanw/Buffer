@@ -1,0 +1,18 @@
+# Web框架和基础依赖
+Flask==3.0.0
+flask-cors==4.0.0
+
+# 向量数据库和嵌入模型
+chromadb==0.4.24
+sentence-transformers==2.3.1
+
+# AI和机器学习
+torch==2.1.1
+transformers==4.36.2
+numpy==1.26.2
+
+# 图像处理
+Pillow==10.1.0
+
+# HTTP请求
+requests==2.31.0

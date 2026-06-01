@@ -1,64 +1,32 @@
-# Python
+# Python缓存
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
+*.pyc
+*.pyo
+*.pyd
 .Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
 
-# Virtual environments
+# 环境变量和敏感信息
+.env
 myenv/
 venv/
-ENV/
 env/
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Data and models
-qwen3-embedding-0.6b/
-chroma_db/
-data/chroma_db_backup_*/
-*.db
-*.sqlite
-
-# Logs
+# 日志文件
 logs/
 *.log
 
-# Uploads
+# 数据文件
+data/
+app/data/
+
+# 模型文件
+qwen3-embedding-0.6b/
+
+# 上传文件
 uploads/
 
-# Environment variables
-.env
-.env.local
-
-# Node modules (if any)
-node_modules/
-
-# Temporary files
-*.tmp
-*.temp
-.cache/
+# IDE和系统文件
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
