@@ -34,14 +34,21 @@
 ```
 c:\IDE_pro_Buffer/
 ├── app/                    # 应用代码目录
-│   ├── app.py              # Flask主应用（REST API入口）
-│   ├── chroma_knowledge_base.py  # Chroma向量知识库操作
-│   ├── buffer_api.py       # Buffer平台API集成
-│   ├── doubao_api.py       # Doubao AI API集成
-│   ├── logger.py           # 日志模块
-│   ├── env_loader.py       # 环境变量加载
-│   ├── data/               # 产品数据存储
-│   │   └── products.json   # 产品列表配置
+│   ├── __init__.py         # Flask应用工厂（支持多环境配置）
+│   ├── config.py           # 配置管理（多环境支持）
+│   ├── api/                # API路由层（蓝图模式）
+│   │   ├── __init__.py     # 统一API蓝本定义
+│   │   ├── knowledge.py    # 知识库API
+│   │   ├── publish.py      # 内容生成与发布API
+│   │   ├── products.py     # 产品管理API
+│   │   └── utils.py        # 工具API
+│   ├── services/           # 业务服务层（无Flask依赖）
+│   │   ├── __init__.py
+│   │   ├── chroma_service.py   # Chroma向量知识库操作
+│   │   ├── buffer_service.py    # Buffer平台API集成
+│   │   ├── ai_service.py        # AI内容/图像生成
+│   │   ├── github_service.py    # GitHub图床服务
+│   │   └── logger.py            # 日志模块
 │   ├── static/             # 静态文件
 │   │   ├── css/            # 样式文件
 │   │   │   └── styles.css
@@ -53,14 +60,28 @@ c:\IDE_pro_Buffer/
 │   │       └── utils.js    # 工具函数模块
 │   └── templates/          # HTML模板
 │       └── index.html      # 主页面
-├── data/                   # Chroma数据库目录
-│   └── chroma_db/          # Chroma向量数据库文件
-├── logs/                   # 日志文件目录
-├── uploads/                # 上传图片存储目录
-├── config.py               # 应用配置文件
+├── data/                   # 数据目录
+│   ├── chroma_db/          # Chroma向量数据库文件
+│   ├── uploads/             # 上传图片存储目录
+│   ├── logs/                # 日志文件目录
+│   └── products.json        # 产品列表配置
+├── models/                 # AI模型缓存目录
+│   └── huggingface/        # HuggingFace模型缓存
+├── run.py                  # 开发环境启动脚本
+├── wsgi.py                 # 生产环境WSGI入口
+├── requirements.txt        # Python依赖列表
 ├── .env.example            # 环境变量示例文件
 └── README.md               # 项目说明文档
 ```
+
+**结构优化说明：**
+
+| 优化点 | 说明 |
+|--------|------|
+| 🔧 **应用工厂模式** | `app/__init__.py` 中的 `create_app()` 支持多环境配置 |
+| 📦 **服务层分离** | `services/` 目录包含纯Python业务逻辑，无Flask依赖 |
+| 🗂️ **API模块化** | 使用Flask Blueprint统一管理API路由 |
+| 📁 **数据目录集中** | 所有数据文件统一存放在 `data/` 目录 |
 
 ---
 
@@ -139,8 +160,14 @@ $env:DEEPSEEK_API_KEY="your-deepseek-api-key"
 
 ### 步骤5：启动服务
 
+#### 开发环境
 ```powershell
-python -m app.app
+python run.py
+```
+
+#### 生产环境（使用Gunicorn）
+```powershell
+gunicorn --workers=4 --bind=0.0.0.0:8000 wsgi:app
 ```
 
 启动成功后，服务将运行在：**http://127.0.0.1:5000**
@@ -161,6 +188,9 @@ python -m app.app
 | 接口路径 | HTTP方法 | 说明 |
 |----------|----------|------|
 | `/api/search?keyword=xxx` | GET | 语义搜索知识库 |
+| `/api/search/suggestions` | GET | 获取搜索建议 |
+| `/api/search/field` | GET | 按字段搜索 |
+| `/api/search/tag` | GET | 按标签搜索 |
 | `/api/entries` | GET | 获取所有知识库条目 |
 | `/api/entries` | POST | 新增知识库内容（支持文件上传） |
 | `/api/entries/<id>` | PUT | 更新指定条目 |
@@ -190,6 +220,15 @@ python -m app.app
 | `/api/products` | POST | 添加新产品 |
 | `/api/products/<index>` | PUT | 更新指定产品 |
 | `/api/products/<index>` | DELETE | 删除指定产品 |
+
+### 工具接口
+
+| 接口路径 | HTTP方法 | 说明 |
+|----------|----------|------|
+| `/api/github/upload-history` | GET | 获取GitHub上传历史 |
+| `/api/github/latest-upload` | GET | 获取最新上传记录 |
+| `/api/utils/convert-github-url` | POST | 转换GitHub URL为CDN地址 |
+| `/api/utils/batch-convert-urls` | POST | 批量转换知识库中的GitHub URL |
 
 ### 文件访问接口
 
@@ -302,19 +341,67 @@ python -m app.app
 
 ### 配置文件位置
 
-配置文件位于 `config.py`，包含以下配置项：
+配置文件位于 `app/config.py`，支持多环境配置：
+
+| 配置类 | 说明 |
+|--------|------|
+| `Config` | 基础配置类 |
+| `DevelopmentConfig` | 开发环境配置 |
+| `ProductionConfig` | 生产环境配置 |
+| `TestingConfig` | 测试环境配置 |
+
+### 配置项说明
 
 | 配置项 | 说明 | 默认值 |
 |--------|------|--------|
-| SIMILARITY_THRESHOLD | 相似度阈值（0-1），超过此值视为重复 | 0.7 |
-| MAX_RETRY_ATTEMPTS | API调用最大重试次数 | 3 |
-| ALLOWED_EXTENSIONS | 允许上传的图片格式 | {'png', 'jpg', 'jpeg', 'gif', 'webp'} |
-| UPLOAD_FOLDER | 上传文件存储目录 | 'uploads' |
-| CHROMA_DB_PATH | Chroma数据库存储路径 | './data/chroma_db' |
-| LOG_FILE | 日志文件路径 | './logs/app.log' |
-| SUPPORTED_PLATFORMS | 支持的发布平台 | ['tiktok', 'instagram', 'facebook'] |
+| SIMILARITY_THRESHOLD | 相似度阈值（0-1），超过此值视为重复 | 0.85 |
+| IMAGE_SIMILARITY_THRESHOLD | 图片相似度阈值 | 0.85 |
+| MAX_RETRY_ATTEMPTS | API调用最大重试次数 | 1 |
+| ALLOWED_IMAGE_EXTENSIONS | 允许上传的图片格式 | {'png', 'jpg', 'jpeg', 'gif', 'webp'} |
+| MAX_UPLOAD_SIZE_MB | 最大上传文件大小（MB） | 10 |
+| SEARCH_CACHE_MAX_SIZE | 搜索缓存最大条目数 | 100 |
 | CORS_ORIGINS | 允许的跨域来源 | ["*"] |
-| API_RATE_LIMIT | API速率限制 | "100/hour" |
+| SUPPORTED_PLATFORMS | 支持的发布平台 | [TikTok, Instagram, Facebook] |
+
+### 环境变量配置
+
+通过 `.env` 文件设置以下环境变量：
+
+| 环境变量 | 说明 |
+|----------|------|
+| FLASK_ENV | 运行环境：development/production/testing |
+| SECRET_KEY | Flask密钥 |
+| BUFFER_API_TOKEN | Buffer API令牌 |
+| DOUBAO_API_KEY | 豆包API密钥 |
+| DEEPSEEK_API_KEY | DeepSeek API密钥 |
+| GITHUB_TOKEN | GitHub令牌（图床用） |
+| GITHUB_USER | GitHub用户名 |
+| GITHUB_REPO | GitHub仓库名 |
+
+---
+
+## 多环境配置
+
+### 开发环境
+
+```powershell
+$env:FLASK_ENV="development"
+python run.py
+```
+
+### 生产环境
+
+```powershell
+$env:FLASK_ENV="production"
+gunicorn --workers=4 --bind=0.0.0.0:8000 wsgi:app
+```
+
+### 测试环境
+
+```powershell
+$env:FLASK_ENV="testing"
+python -m pytest
+```
 
 ---
 
@@ -338,12 +425,12 @@ python -m app.app
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| id | string | 条目的唯一标识（UUID） |
+| id | string | 条目的唯一标识 |
 | 产品名称 | string | 产品名称 |
 | 文案内容 | string | 社交媒体文案内容 |
 | prompt | string | 图片生成提示词 |
 | image_url | string | 图片URL |
-| 来源 | string | 'manual'（手动录入）或 'ai'（AI生成） |
+| 来源 | string | 'manual'（手动录入）或 'published'（已发布） |
 | 标签 | array | 标签列表（用于分类和搜索） |
 | 发布次数 | number | 该条目被发布的次数 |
 | 创建时间 | number | Unix时间戳 |
@@ -355,7 +442,7 @@ python -m app.app
 ### 首次启动
 1. 首次启动时，Chroma数据库会自动初始化
 2. 如果 `products.json` 文件不存在，系统会自动创建空文件
-3. 上传目录 `uploads/` 会自动创建
+3. 数据目录 `data/` 会自动创建（包含 chroma_db、uploads、logs）
 
 ### API密钥
 1. **Buffer API Token**：需要在Buffer官网申请开发者账号获取
@@ -365,7 +452,7 @@ python -m app.app
 ### 图片上传
 1. 支持的格式：png、jpg、jpeg、gif、webp
 2. 文件名使用UUID自动生成，避免重复
-3. 上传的图片存储在 `uploads/` 目录
+3. 上传的图片存储在 `data/uploads/` 目录
 
 ### 定时发布
 1. 定时发布时间使用ISO 8601格式
@@ -373,9 +460,9 @@ python -m app.app
 3. 如果设置的时间已过期，系统会立即发布
 
 ### 日志
-1. 日志文件存储在 `logs/app.log`
+1. 日志文件存储在 `data/logs/app.log`
 2. 包含API调用、错误信息、警告等
-3. 日志级别可在 `logger.py` 中配置
+3. 日志级别可在 `app/services/logger.py` 中配置
 
 ---
 
@@ -390,10 +477,19 @@ python -m app.app
 | 图片上传失败 | 文件格式不支持 | 确保上传的是支持的图片格式 |
 | 发布失败 | Buffer Token无效 | 检查BUFFER_API_TOKEN配置 |
 | 搜索结果为空 | 知识库没有数据 | 先添加知识库内容 |
+| 模块导入错误 | 路径问题 | 检查导入语句是否正确 |
 
 ---
 
 ## 更新日志
+
+### v2.0.0（架构优化）
+- ✅ 采用Flask应用工厂模式，支持多环境配置
+- ✅ 分离API层与业务服务层，降低耦合
+- ✅ 集中数据目录（chroma_db、uploads、logs）
+- ✅ 使用Blueprint统一管理API路由
+- ✅ 添加生产环境WSGI入口（wsgi.py）
+- ✅ 统一配置管理（app/config.py）
 
 ### v1.0.0
 - 初始版本发布

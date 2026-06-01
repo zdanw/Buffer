@@ -11,22 +11,22 @@ myenv/
 venv/
 env/
 
-# 日志文件
-logs/
-*.log
-
-# 数据文件
+# 数据文件（所有持久化数据）
 data/
-app/data/
+!data/.gitkeep
 
 # 模型文件
-qwen3-embedding-0.6b/
-
-# 上传文件
-uploads/
+models/
+!models/.gitkeep
 
 # IDE和系统文件
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
+
+# 测试临时文件
+test_temp/
+
+# 旧文件备份
+*.bak

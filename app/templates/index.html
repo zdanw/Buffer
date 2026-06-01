@@ -177,12 +177,34 @@
                     <label for="newPrompt">Prompt（图片生成提示词）</label>
                     <textarea id="newPrompt" rows="2" placeholder="确保产品不变性，以及产品bebcare品牌的logo准确性"></textarea>
                 </div>
-                <!-- 图片文件选择 -->
+                <!-- 图片输入方式选择 -->
                 <div class="form-group">
-                    <label for="newImageFile">选择图片</label>
+                    <label>图片来源 <span style="font-size: 0.8em; color: #666;">(支持本地图片上传或网络图片URL)</span></label>
+                    <div class="image-source-options" style="margin-bottom: 15px;">
+                        <label><input type="radio" name="imageSource" value="upload" checked onchange="window.appUtils.toggleImageSource()"> 📁 上传本地图片</label>
+                        <label><input type="radio" name="imageSource" value="url" onchange="window.appUtils.toggleImageSource()"> 🔗 输入图片URL</label>
+                    </div>
+                </div>
+                
+                <!-- 图片文件选择 -->
+                <div class="form-group" id="uploadImageSection">
+                    <label for="newImageFile">选择图片文件</label>
                     <input type="file" id="newImageFile" accept="image/*" onchange="window.appUtils.previewImage(event)">
                     <div id="imagePreview" style="margin-top: 10px; display: none;">
                         <img id="previewImg" src="" alt="预览图片" style="max-width: 300px; max-height: 200px; border-radius: 8px;">
+                    </div>
+                </div>
+                
+                <!-- 图片URL输入 -->
+                <div class="form-group" id="urlImageSection" style="display: none;">
+                    <label for="newImageUrl">图片URL地址</label>
+                    <input type="text" id="newImageUrl" placeholder="例如: https://example.com/image.jpg" style="margin-bottom: 10px;">
+                    <div style="margin-bottom: 10px;">
+                        <button class="btn btn-secondary btn-sm" onclick="window.appUtils.previewUrlImage()">👁️ 预览图片</button>
+                        <button class="btn btn-info btn-sm" onclick="window.appUtils.clearUrlImage()">🧹 清除</button>
+                    </div>
+                    <div id="urlImagePreview" style="margin-top: 10px; display: none;">
+                        <img id="previewUrlImg" src="" alt="预览图片" style="max-width: 300px; max-height: 200px; border-radius: 8px;">
                     </div>
                 </div>
                 <button id="addToKnowledgeBtn" class="btn btn-success" onclick="window.appKnowledge.addNewEntry()">添加到知识库</button>

@@ -533,6 +533,35 @@ body {
     margin-top: 8px;
 }
 
+/* ==================== 图片来源选项样式 ==================== */
+
+/**
+ * 图片来源选项容器
+ */
+.image-source-options {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+/**
+ * 图片来源选项标签
+ */
+.image-source-options label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-weight: normal;
+}
+
+/**
+ * 图片来源选项单选框
+ */
+.image-source-options input[type="radio"] {
+    width: auto;
+}
+
 /* ==================== 平台选择复选框样式 ==================== */
 
 /**

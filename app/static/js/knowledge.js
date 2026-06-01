@@ -15,7 +15,7 @@ import { state, showStatus } from './utils.js';
 /**
  * 添加新条目到知识库
  * @async
- * @description 从表单收集数据，验证后通过 FormData 上传图片和文本内容
+ * @description 从表单收集数据，支持文件上传和URL两种方式添加图片
  * @returns {Promise<void>}
  */
 async function addNewEntry() {
@@ -23,7 +23,6 @@ async function addNewEntry() {
     const productName = document.getElementById('newProductName').value.trim();
     const content = document.getElementById('newContent').value.trim();
     const prompt = document.getElementById('newPrompt').value.trim();
-    const fileInput = document.getElementById('newImageFile');
     const submitBtn = document.getElementById('addToKnowledgeBtn');
     
     // 验证必填字段
@@ -32,30 +31,66 @@ async function addNewEntry() {
         return;
     }
     
-    // 验证图片文件
-    if (!fileInput.files || fileInput.files.length === 0) {
-        showStatus('请选择图片文件', 'error');
-        return;
-    }
-    
-    // 构建 FormData 用于文件上传
-    const formData = new FormData();
-    formData.append('产品名称', productName);
-    formData.append('文案内容', content);
-    formData.append('prompt', prompt);
-    formData.append('file', fileInput.files[0]);
+    // 获取图片来源方式
+    const imageSource = document.querySelector('input[name="imageSource"]:checked').value;
     
     // 设置按钮加载状态
     submitBtn.disabled = true;
     submitBtn.textContent = '添加中...';
     
     try {
-        const response = await fetch('/api/entries', {
-            method: 'POST',
-            body: formData
-        });
+        let response, data;
         
-        const data = await response.json();
+        if (imageSource === 'upload') {
+            // 文件上传方式
+            const fileInput = document.getElementById('newImageFile');
+            
+            // 验证图片文件
+            if (!fileInput.files || fileInput.files.length === 0) {
+                showStatus('请选择图片文件', 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = '添加到知识库';
+                return;
+            }
+            
+            // 构建 FormData 用于文件上传
+            const formData = new FormData();
+            formData.append('产品名称', productName);
+            formData.append('文案内容', content);
+            formData.append('prompt', prompt);
+            formData.append('file', fileInput.files[0]);
+            
+            response = await fetch('/api/entries', {
+                method: 'POST',
+                body: formData
+            });
+            data = await response.json();
+        } else {
+            // URL方式
+            const imageUrl = document.getElementById('newImageUrl').value.trim();
+            
+            if (!imageUrl) {
+                showStatus('请输入图片URL', 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = '添加到知识库';
+                return;
+            }
+            
+            // 构建 JSON 数据
+            const jsonData = {
+                '产品名称': productName,
+                '文案内容': content,
+                'prompt': prompt,
+                'image_url': imageUrl
+            };
+            
+            response = await fetch('/api/entries', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(jsonData)
+            });
+            data = await response.json();
+        }
         
         if (data.status === 'success') {
             showStatus('添加成功！新内容已保存到知识库', 'success');
@@ -64,7 +99,9 @@ async function addNewEntry() {
             document.getElementById('newContent').value = '';
             document.getElementById('newPrompt').value = '';
             document.getElementById('newImageFile').value = '';
+            document.getElementById('newImageUrl').value = '';
             document.getElementById('imagePreview').style.display = 'none';
+            document.getElementById('urlImagePreview').style.display = 'none';
             // 重新加载知识库列表
             loadKnowledgeBase();
         } else {

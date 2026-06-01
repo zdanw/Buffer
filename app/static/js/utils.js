@@ -188,6 +188,129 @@ export function clearEditImage() {
     document.getElementById('editImagePreview').src = 'https://via.placeholder.com/200x200?text=暂无图片';
 }
 
+/**
+ * 切换图片来源方式
+ * @description 根据用户选择显示/隐藏上传或URL输入区域
+ */
+export function toggleImageSource() {
+    const source = document.querySelector('input[name="imageSource"]:checked').value;
+    const uploadSection = document.getElementById('uploadImageSection');
+    const urlSection = document.getElementById('urlImageSection');
+    
+    if (source === 'upload') {
+        uploadSection.style.display = 'block';
+        urlSection.style.display = 'none';
+    } else {
+        uploadSection.style.display = 'none';
+        urlSection.style.display = 'block';
+    }
+}
+
+/**
+ * 预览URL图片
+ * @description 根据输入的URL更新图片预览
+ */
+export function previewUrlImage() {
+    const urlInput = document.getElementById('newImageUrl');
+    const url = urlInput ? urlInput.value.trim() : '';
+
+    console.log('🔍 previewUrlImage() 被调用');
+    console.log('📝 URL输入值:', url);
+
+    if (!url) {
+        alert('请先输入图片URL');
+        return;
+    }
+
+    // 添加协议前缀（如果缺少）
+    let fullUrl = url;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        fullUrl = 'https://' + url;
+    }
+
+    console.log('✅ 尝试加载图片:', fullUrl);
+
+    // 获取预览容器
+    let previewContainer = document.getElementById('urlImagePreview');
+    if (!previewContainer) {
+        // 如果找不到容器，创建一个
+        const urlSection = document.getElementById('urlImageSection');
+        if (urlSection) {
+            previewContainer = document.createElement('div');
+            previewContainer.id = 'urlImagePreview';
+            previewContainer.style.marginTop = '10px';
+            urlSection.appendChild(previewContainer);
+        }
+    }
+
+    if (!previewContainer) {
+        alert('错误：无法找到或创建预览容器');
+        return;
+    }
+
+    // 清空容器，创建新的图片元素
+    previewContainer.innerHTML = '';
+    previewContainer.style.display = 'block';
+
+    const previewImg = document.createElement('img');
+    previewImg.id = 'previewUrlImg';
+    previewImg.style.maxWidth = '300px';
+    previewImg.style.maxHeight = '200px';
+    previewImg.style.borderRadius = '8px';
+    previewImg.alt = '预览图片';
+    
+    // 添加加载指示器
+    previewImg.style.display = 'none';
+    const loadingDiv = document.createElement('div');
+    loadingDiv.textContent = '正在加载图片...';
+    loadingDiv.style.padding = '20px';
+    loadingDiv.style.color = '#666';
+    previewContainer.appendChild(loadingDiv);
+
+    // 设置图片源和事件
+    previewImg.onload = function() {
+        console.log('✅ 图片加载成功');
+        loadingDiv.remove();
+        previewImg.style.display = 'block';
+    };
+
+    previewImg.onerror = function() {
+        console.error('❌ 图片加载失败');
+        loadingDiv.remove();
+        
+        // 显示友好的错误信息
+        const errorDiv = document.createElement('div');
+        errorDiv.style.padding = '15px';
+        errorDiv.style.backgroundColor = '#fff3cd';
+        errorDiv.style.border = '1px solid #ffc107';
+        errorDiv.style.borderRadius = '4px';
+        errorDiv.style.marginTop = '10px';
+        errorDiv.innerHTML = `
+            <strong>⚠️ 图片预览失败</strong><br>
+            <small>可能原因：</small><br>
+            <small>1. 图片服务器拒绝访问（防盗链/CORS限制）</small><br>
+            <small>2. 网络问题</small><br>
+            <small>不过不用担心，您仍然可以继续添加这个图片到知识库！</small>
+        `;
+        previewContainer.appendChild(errorDiv);
+        
+        // 直接添加图片URL到知识库仍然是可以的，只是预览不了
+    };
+
+    previewImg.src = fullUrl;
+    previewContainer.appendChild(previewImg);
+}
+
+/**
+ * 清除URL图片预览
+ * @description 重置URL输入框和预览图片
+ */
+export function clearUrlImage() {
+    document.getElementById('newImageUrl').value = '';
+    document.getElementById('urlImagePreview').style.display = 'none';
+    document.getElementById('previewUrlImg').src = '';
+}
+
 // ==================== 模态框管理 ====================
 
 /**
@@ -280,6 +403,8 @@ export function createModal(contentHtml, options = {}) {
  * @description 设置模式选择、搜索等全局事件监听
  */
 export function initEventListeners() {
+    console.log('🔧 initEventListeners() 被调用');
+    
     // 模式选择事件监听
     document.querySelectorAll('.mode-option').forEach(option => {
         option.addEventListener('click', () => {
@@ -305,4 +430,19 @@ export function initEventListeners() {
             }
         });
     }
+
+    // 图片来源切换监听
+    const imageSourceRadios = document.querySelectorAll('input[name="imageSource"]');
+    console.log('📷 找到的图片来源单选框数量:', imageSourceRadios.length);
+    imageSourceRadios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            console.log('📷 图片来源切换到:', e.target.value);
+            toggleImageSource();
+        });
+        console.log('✅ 为图片来源单选框添加了事件监听器:', radio.value);
+    });
+    
+    // 初始化时确保正确显示默认选项
+    toggleImageSource();
+    console.log('✅ initEventListeners() 完成');
 }
