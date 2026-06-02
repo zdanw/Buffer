@@ -106,10 +106,20 @@ def init_knowledge_base(force=False):
 
 def build_document(entry):
     parts = []
-    parts.append(f"产品名称: {entry['产品名称']}" * 2)
-    parts.append(f"文案内容: {entry['文案内容']}")
     
-    if 'prompt' in entry:
+    product_name = entry.get('产品名称', '')
+    if product_name:
+        parts.append(f"产品名称: {product_name}" * 2)
+    else:
+        parts.append("产品名称: 未知")
+    
+    content = entry.get('文案内容', '')
+    if content:
+        parts.append(f"文案内容: {content}")
+    else:
+        parts.append("文案内容: 暂无")
+    
+    if 'prompt' in entry and entry['prompt']:
         parts.append(f"提示词: {entry['prompt']}")
     
     if '标签' in entry and isinstance(entry['标签'], list) and len(entry['标签']) > 0:
@@ -296,14 +306,28 @@ def add_entry(entry):
         del entry['标签']
     
     document = build_document(entry)
-    collection.add(
-        ids=[f"entry_{new_id}"],
-        documents=[document],
-        metadatas=[entry]
-    )
     
-    ENTRY_CACHE.clear()
-    return entry
+    cleaned_entry = {}
+    for key, value in entry.items():
+        if value is None:
+            continue
+        elif isinstance(value, (str, int, float, bool, list)):
+            cleaned_entry[key] = value
+        else:
+            cleaned_entry[key] = str(value)
+    
+    try:
+        collection.add(
+            ids=[f"entry_{new_id}"],
+            documents=[document],
+            metadatas=[cleaned_entry]
+        )
+        ENTRY_CACHE.clear()
+        logger.info(f"条目添加成功: entry_{new_id}")
+        return entry
+    except Exception as e:
+        logger.error(f"添加条目到Chroma失败: {str(e)}", extra={"entry_id": new_id, "document_length": len(document), "entry_keys": list(entry.keys())})
+        raise
 
 
 def update_entry(entry_id, updated_data):

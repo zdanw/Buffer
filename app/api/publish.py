@@ -259,7 +259,7 @@ def publish():
                     add_entry(new_entry)
                     logger.info("内容已保存到知识库", extra={"product_name": product_name})
                 except Exception as e:
-                    logger.error("保存内容到知识库失败", extra={"product_name": product_name, "error": str(e)})
+                    logger.error("保存内容到知识库失败", extra={"product_name": product_name, "error": str(e), "entry_data": str(new_entry)[:500]})
         
         return jsonify({
             "status": "completed",
