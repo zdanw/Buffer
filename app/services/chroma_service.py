@@ -45,7 +45,7 @@ INITIAL_DATA = [
         "产品名称": "初始化",
         "文案内容": "xxxxxxxxxxxxxx。",
         "prompt": "xxxxxxxxxxxxxxxxxx",
-        "image_url": "https://example.com/bebcare-nightlight.jpg",
+        "image_url": None,
         "创建时间": str(int(time.time())),
         "来源": Config.SOURCE_MANUAL
     },
@@ -165,14 +165,33 @@ def search_knowledge_base(keyword, n_results=10, threshold=0.3):
     
     filtered_results = [r for r in all_results if r['similarity'] >= threshold]
     
-    keyword_lower = keyword.lower()
-    filtered_results = [
-        r for r in filtered_results 
-        if keyword_lower in r.get('产品名称', '').lower() or
-           keyword_lower in r.get('文案内容', '').lower() or
-           keyword_lower in r.get('prompt', '').lower() or
-           (isinstance(r.get('标签'), list) and any(keyword_lower in str(tag).lower() for tag in r['标签']))
-    ]
+    if not keyword:
+        return []
+    
+    expanded_keywords_lower = [kw.lower() for kw in expanded_keywords]
+    
+    def matches_keyword(entry):
+        entry_name = entry.get('产品名称', '').lower()
+        entry_content = entry.get('文案内容', '').lower()
+        entry_prompt = entry.get('prompt', '').lower()
+        entry_tags = entry.get('标签', [])
+        
+        for kw in expanded_keywords_lower:
+            if kw in entry_name or kw in entry_content or kw in entry_prompt:
+                return True
+            if isinstance(entry_tags, list):
+                for tag in entry_tags:
+                    if kw in str(tag).lower():
+                        return True
+        
+        return False
+    
+    high_confidence_results = [r for r in filtered_results if r['similarity'] >= 0.5]
+    low_confidence_results = [r for r in filtered_results if r['similarity'] < 0.5]
+    
+    low_confidence_filtered = [r for r in low_confidence_results if matches_keyword(r)]
+    
+    filtered_results = high_confidence_results + low_confidence_filtered
     
     filtered_results.sort(key=lambda x: x['composite_score'], reverse=True)
     final_results = filtered_results[:n_results]
@@ -338,9 +357,29 @@ def delete_entry(entry_id):
     try:
         collection.delete(ids=[f"entry_{entry_id}"])
         ENTRY_CACHE.clear()
+        SEARCH_CACHE.clear()
         return True
     except Exception:
         return False
+
+
+def delete_entries_by_product(product_name):
+    init_knowledge_base()
+    
+    try:
+        all_entries = get_all_entries()
+        deleted_count = 0
+        
+        for entry in all_entries:
+            if entry.get('产品名称') == product_name:
+                collection.delete(ids=[f"entry_{entry['id']}"])
+                deleted_count += 1
+        
+        ENTRY_CACHE.clear()
+        SEARCH_CACHE.clear()
+        return deleted_count
+    except Exception:
+        return 0
 
 
 def get_entry_by_id(entry_id):

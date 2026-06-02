@@ -415,6 +415,7 @@ body {
  * 状态消息容器
  */
 .status-message {
+    display: none;
     padding: 15px;
     border-radius: 10px;
     margin-bottom: 20px;

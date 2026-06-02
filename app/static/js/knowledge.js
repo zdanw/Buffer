@@ -8,7 +8,7 @@
  * 4. 搜索和筛选功能
  */
 
-import { state, showStatus } from './utils.js';
+import { state, showStatus, escapeHtml, setButtonLoading, resetButton } from './utils.js';
 
 // ==================== 条目添加功能 ====================
 
@@ -53,12 +53,30 @@ async function addNewEntry() {
                 return;
             }
             
+            const file = fileInput.files[0];
+            
+            // 验证文件类型
+            if (!file.type.startsWith('image/')) {
+                showStatus('请选择图片文件', 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = '添加到知识库';
+                return;
+            }
+            
+            // 验证文件大小（5MB）
+            if (file.size > 5 * 1024 * 1024) {
+                showStatus('图片大小不能超过5MB', 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = '添加到知识库';
+                return;
+            }
+            
             // 构建 FormData 用于文件上传
             const formData = new FormData();
             formData.append('产品名称', productName);
             formData.append('文案内容', content);
             formData.append('prompt', prompt);
-            formData.append('file', fileInput.files[0]);
+            formData.append('file', file);
             
             response = await fetch('/api/entries', {
                 method: 'POST',
@@ -181,6 +199,9 @@ async function generateContentForKnowledge() {
  * @returns {Promise<void>}
  */
 async function loadKnowledgeBase() {
+    const btn = document.getElementById('refreshKnowledgeBtn');
+    setButtonLoading(btn, '刷新中...');
+    
     try {
         const response = await fetch('/api/entries');
         const data = await response.json();
@@ -188,6 +209,8 @@ async function loadKnowledgeBase() {
         renderKnowledgeBase();
     } catch (error) {
         console.error('加载知识库失败:', error);
+    } finally {
+        resetButton(btn);
     }
 }
 
@@ -219,17 +242,20 @@ function renderKnowledgeBase() {
     // 生成条目列表 HTML
     container.innerHTML = filtered.map(item => {
         const imageUrl = item['image_url'] || 'https://via.placeholder.com/80x80?text=暂无图片';
+        const productName = escapeHtml(item['产品名称'] || '');
+        const content = escapeHtml(item['文案内容'] || '');
+        const source = escapeHtml(item['来源'] || '未知');
         
         return `
             <div class="knowledge-item">
                 <div style="display: flex; gap: 15px;">
-                    <img src="${imageUrl}" alt="${item['产品名称']}" 
+                    <img src="${imageUrl}" alt="${productName}" 
                          style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px;" />
                     <div style="flex: 1;">
-                        <h4>${item['产品名称']}</h4>
-                        <p>${item['文案内容'].substring(0, 80)}...</p>
+                        <h4>${productName}</h4>
+                        <p>${content.substring(0, 80)}...</p>
                         <div class="item-meta">
-                            来源: ${item['来源'] || '未知'} | 
+                            来源: ${source} | 
                             发布次数: ${item['发布次数'] || 0} |
                             ${item['创建时间'] ? '创建: ' + new Date(item['创建时间'] * 1000).toLocaleString('zh-CN') : ''}
                         </div>
@@ -264,10 +290,15 @@ function editEntry(id) {
     document.getElementById('editContent').value = entry['文案内容'];
     document.getElementById('editPrompt').value = entry['prompt'];
     
-    // 设置图片预览
+    // 设置主图片预览
     const imageUrl = entry['image_url'] || '';
     document.getElementById('editImageUrl').value = imageUrl;
     document.getElementById('editImagePreview').src = imageUrl || 'https://via.placeholder.com/200x200?text=暂无图片';
+    
+    // 设置 TikTok 图片预览
+    const tiktokImageUrl = entry['image_url_tiktok'] || '';
+    document.getElementById('editTiktokImageUrl').value = tiktokImageUrl;
+    document.getElementById('editTiktokImagePreview').src = tiktokImageUrl || 'https://via.placeholder.com/200x200?text=暂无TikTok图片';
     
     // 显示编辑模态框
     document.getElementById('editModal').classList.add('active');
@@ -280,24 +311,30 @@ function editEntry(id) {
  * @returns {Promise<void>}
  */
 async function saveEdit() {
-    // 收集表单数据
-    const productName = document.getElementById('editProductName').value.trim();
-    const content = document.getElementById('editContent').value.trim();
-    const prompt = document.getElementById('editPrompt').value.trim();
-    const imageUrl = document.getElementById('editImageUrl').value.trim();
-    
-    // 验证必填字段
-    if (!productName || !content || !prompt) {
-        showStatus('请填写所有必填字段', 'error');
-        return;
-    }
+    const saveBtn = document.getElementById('saveEditBtn');
+    setButtonLoading(saveBtn, '保存中...');
     
     try {
+        // 收集表单数据
+        const productName = document.getElementById('editProductName').value.trim();
+        const content = document.getElementById('editContent').value.trim();
+        const prompt = document.getElementById('editPrompt').value.trim();
+        const imageUrl = document.getElementById('editImageUrl').value.trim();
+        const tiktokImageUrl = document.getElementById('editTiktokImageUrl').value.trim();
+        
+        // 验证必填字段
+        if (!productName || !content || !prompt) {
+            showStatus('请填写所有必填字段', 'error');
+            resetButton(saveBtn);
+            return;
+        }
+        
         const updateData = {
             产品名称: productName,
             文案内容: content,
             prompt: prompt,
-            image_url: imageUrl
+            image_url: imageUrl,
+            image_url_tiktok: tiktokImageUrl
         };
         
         const response = await fetch(`/api/entries/${state.currentEditEntry['id']}`, {
@@ -319,6 +356,8 @@ async function saveEdit() {
         }
     } catch (error) {
         showStatus('更新失败: ' + error.message, 'error');
+    } finally {
+        resetButton(saveBtn);
     }
 }
 

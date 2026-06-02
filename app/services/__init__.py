@@ -15,6 +15,7 @@ from .chroma_service import (
     search_by_field,
     update_entry,
     delete_entry,
+    delete_entries_by_product,
     get_entry_by_id,
     get_entries_by_tag,
     update_publish_count
@@ -43,6 +44,7 @@ __all__ = [
     'search_by_field',
     'update_entry',
     'delete_entry',
+    'delete_entries_by_product',
     'get_entry_by_id',
     'get_entries_by_tag',
     'update_publish_count',

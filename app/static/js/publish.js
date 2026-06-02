@@ -8,68 +8,9 @@
  * 4. 定时发布支持
  */
 
-import { state, showStatus } from './utils.js';
-
-// ==================== UI 工具函数 ====================
-
-/**
- * 设置按钮为加载状态
- * @param {HTMLButtonElement} btn - 按钮元素
- * @param {string} originalText - 原始按钮文本
- */
-function setButtonLoading(btn, originalText) {
-    if (!btn) return;
-    btn.disabled = true;
-    btn.dataset.originalText = originalText;
-    btn.textContent = '处理中...';
-}
-
-/**
- * 重置按钮状态
- * @param {HTMLButtonElement} btn - 按钮元素
- */
-function resetButton(btn) {
-    if (!btn) return;
-    btn.disabled = false;
-    btn.textContent = btn.dataset.originalText || '完成';
-}
+import { state, showStatus, setButtonLoading, resetButton, escapeHtml } from './utils.js';
 
 // ==================== 定时发布功能 ====================
-
-/**
- * 切换定时发布开关
- * @description 启用/禁用定时发布时间选择器，默认设置为当前时间 +1 小时
- */
-function toggleScheduleTime() {
-    const enableSchedule = document.getElementById('enableSchedule');
-    const scheduleTime = document.getElementById('scheduleTime');
-    
-    if (enableSchedule.checked) {
-        scheduleTime.disabled = false;
-        // 如果没有设置时间，默认设置为当前时间 + 1 小时
-        if (!scheduleTime.value) {
-            const now = new Date();
-            now.setHours(now.getHours() + 1);
-            scheduleTime.value = formatDateTimeLocal(now);
-        }
-    } else {
-        scheduleTime.disabled = true;
-    }
-}
-
-/**
- * 格式化日期为 datetime-local 输入框格式
- * @param {Date} date - 日期对象
- * @returns {string} 格式化后的日期字符串 (YYYY-MM-DDTHH:mm)
- */
-function formatDateTimeLocal(date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
-}
 
 /**
  * 获取定时发布时间
@@ -131,38 +72,50 @@ function updateSelectedPlatformsDisplay() {
  * @returns {Promise<void>}
  */
 async function searchProducts() {
+    const btn = document.getElementById('productSearchBtn');
+    setButtonLoading(btn, '搜索中...');
+    
     const keyword = document.getElementById('productInput').value.trim();
     if (!keyword) {
         showStatus('请输入产品关键词', 'error');
+        resetButton(btn);
         return;
     }
 
     try {
         const response = await fetch(`/api/search?keyword=${encodeURIComponent(keyword)}`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
         const data = await response.json();
         
-        // 保存搜索结果到全局状态
-        state.searchResultsData = data.results;
+        state.searchResultsData = data.results || [];
         
         if (state.searchResultsData.length === 0) {
             document.getElementById('searchResults').innerHTML = '<p style="color: #666;">未找到相关产品</p>';
         } else {
-            // 渲染搜索结果列表
             let html = '';
             state.searchResultsData.forEach((item, index) => {
                 const imageUrl = item['image_url'] || 'https://via.placeholder.com/100x100?text=暂无图片';
                 const similarityPercent = (item['similarity'] * 100).toFixed(1);
                 const compositeScorePercent = item['composite_score'] ? (item['composite_score'] * 100).toFixed(1) : similarityPercent;
                 
+                const productName = escapeHtml(item['产品名称'] || '');
+                const content = escapeHtml(item['文案内容'] || '');
+                const tags = item['标签'] && item['标签'].length > 0 ? 
+                    '<div class="item-tags">' + item['标签'].map(tag => `<span class="item-tag">${escapeHtml(String(tag))}</span>`).join('') + '</div>' : '';
+                
                 html += `
                     <div class="search-item" onclick="window.appPublish.selectProduct(${index})">
                         <div style="display: flex; gap: 15px;">
-                            <img src="${imageUrl}" alt="${item['产品名称']}" 
+                            <img src="${imageUrl}" alt="${productName}" 
                                  style="width: 100px; height: 100px; object-fit: cover; border-radius: 8px;" />
                             <div style="flex: 1;">
-                                <h4>${item['产品名称']}</h4>
-                                <p>文案：${item['文案内容'].substring(0, 50)}...</p>
-                                ${item['标签'] && item['标签'].length > 0 ? '<div class="item-tags">' + item['标签'].map(tag => `<span class="item-tag">${tag}</span>`).join('') + '</div>' : ''}
+                                <h4>${productName}</h4>
+                                <p>文案：${content.substring(0, 50)}...</p>
+                                ${tags}
                                 <p style="font-size: 0.8rem; color: #999;">
                                     相似度: ${similarityPercent}% | 综合评分: ${compositeScorePercent}% | 发布次数: ${item['发布次数'] || 0}
                                 </p>
@@ -175,6 +128,8 @@ async function searchProducts() {
         }
     } catch (error) {
         showStatus('搜索失败: ' + error.message, 'error');
+    } finally {
+        resetButton(btn);
     }
 }
 
@@ -622,18 +577,20 @@ async function autoPublish(productName, platforms) {
  * @param {Array} data.results - 发布结果列表（备选字段）
  */
 function displayPublishResults(data) {
-    document.getElementById('publishResultSection').classList.add('active');
+    const resultSection = document.getElementById('publishResultSection');
+    resultSection.classList.add('active');
     
     let html = '<h3>发布结果</h3>';
-    const results = data.publish_results || data.results || [];
+    const results = data.publish_results || [];
     if (results.length > 0) {
         results.forEach(result => {
             const statusClass = result.status === 'success' ? 'status-success' : 'status-error';
-            const platformName = result.channel || result.platform || '未知平台';
+            const platformName = escapeHtml(result.channel || result.platform || '未知平台');
+            const errorMsg = escapeHtml(result.error || '');
             html += `
                 <div class="status-message ${statusClass}">
                     <strong>${platformName}</strong><br>
-                    ${result.status === 'success' ? '发布成功' : result.error || '发布失败'}
+                    ${result.status === 'success' ? '发布成功' : errorMsg || '发布失败'}
                 </div>
             `;
         });
@@ -642,6 +599,8 @@ function displayPublishResults(data) {
     }
     
     document.getElementById('publishResults').innerHTML = html;
+    
+    resultSection.scrollIntoView({ behavior: 'smooth' });
 }
 
 // ==================== 模块导出 ====================

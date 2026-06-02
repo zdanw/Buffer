@@ -11,6 +11,7 @@ import os
 
 from app.config import Config
 from app.services.logger import get_logger
+from app.services import delete_entries_by_product
 from app.api import api_bp
 
 logger = get_logger(__name__)
@@ -122,6 +123,8 @@ def delete_product(index):
     
     deleted = products.pop(index)
     save_products(products)
+    
+    delete_entries_by_product(deleted['name'])
     
     logger.info("产品已删除", extra={"product_name": deleted['name']})
     return jsonify({"status": "success", "deleted": deleted, "products": products})

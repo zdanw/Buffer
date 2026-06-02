@@ -53,7 +53,7 @@ class Config:
     CHROMA_DB_DIR = os.path.join(DATA_DIR, 'chroma_db')
     LOG_DIR = os.path.join(DATA_DIR, 'logs')
     LOCAL_EMBEDDING_MODEL_PATH = os.path.join(BASE_DIR, 'models', 'qwen3-embedding-0.6b')
-    LOGO_FILE_PATH = os.path.join(UPLOAD_DIR, 'logo.png')
+    LOGO_FILE_PATH = "https://cdn.jsdelivr.net/gh/zdanw/my-image-bed@main/images/logo.png"
     PRODUCTS_FILE = os.path.join(DATA_DIR, 'products.json')
 
     # === Buffer平台API配置 ===
@@ -102,8 +102,7 @@ class Config:
 7. 禁止生成与参考Logo不同的任何品牌标识或商标
 8. 保持产品的专业感和高端质感
 9. 禁止修改产品的核心设计
-10. 风格统一，符合Bebcare品牌调性
-11. 图片上不得显示任何文件路径、URL地址或版权信息
+10. 图片上不得显示任何文件路径、URL地址或版权信息
 """
 
     # === 相似度和重试配置 ===
@@ -148,9 +147,9 @@ class Config:
     
     # === 图片生成配置 ===
     IMAGE_GENERATION_PROMPT = os.getenv("IMAGE_GENERATION_PROMPT", '''
-1.给我生成TikTok、淘宝、小红书类似的电商宣传图片
+1.给我生成电商宣传图片
 2.图片上的文字采用英文，不能出现任何中文字符
-3.图片上不允许出现TikTok、淘宝、小红书等其他社交媒体平台的logo或文字
+3.图片上不允许出现除了Bebcare以外的任何logo
 ''').strip()
 
 

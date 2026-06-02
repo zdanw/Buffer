@@ -4,7 +4,7 @@
  * @description 该模块负责管理产品列表，包括加载、添加、编辑和删除产品的功能
  */
 
-import { showStatus, createModal } from './utils.js';
+import { showStatus, createModal, escapeHtml, setButtonLoading, resetButton } from './utils.js';
 
 /**
  * 当前产品列表数据
@@ -43,22 +43,27 @@ function renderProductList() {
     }
     
     // 生成产品列表 HTML
-    container.innerHTML = products.map((product, index) => `
-        <div class="product-item" style="border: 1px solid #eee; border-radius: 8px; margin-bottom: 12px; overflow: hidden;">
-            <div style="padding: 15px;">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                    <span style="font-weight: bold; font-size: 1.1rem;">${index + 1}. ${product.name}</span>
-                    <div style="display: flex; gap: 10px;">
-                        <button class="btn btn-primary btn-sm" onclick="window.appProducts.editProduct(${index})">编辑</button>
-                        <button class="btn btn-danger btn-sm" onclick="window.appProducts.deleteProduct(${index})">删除</button>
+    container.innerHTML = products.map((product, index) => {
+        const name = escapeHtml(product.name || '');
+        const description = escapeHtml(product.description || '');
+        
+        return `
+            <div class="product-item" style="border: 1px solid #eee; border-radius: 8px; margin-bottom: 12px; overflow: hidden;">
+                <div style="padding: 15px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-weight: bold; font-size: 1.1rem;">${index + 1}. ${name}</span>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="btn btn-primary btn-sm" onclick="window.appProducts.editProduct(${index})">编辑</button>
+                            <button class="btn btn-danger btn-sm" onclick="window.appProducts.deleteProduct(${index})">删除</button>
+                        </div>
                     </div>
+                    ${product.description ? 
+                        `<p style="margin: 0; color: #666; font-size: 0.9rem; padding-left: 10px; border-left: 3px solid #ddd;">${description}</p>` : 
+                        '<p style="margin: 0; color: #999; font-size: 0.9rem; padding-left: 10px; font-style: italic;">暂无描述</p>'}
                 </div>
-                ${product.description ? 
-                    `<p style="margin: 0; color: #666; font-size: 0.9rem; padding-left: 10px; border-left: 3px solid #ddd;">${product.description}</p>` : 
-                    '<p style="margin: 0; color: #999; font-size: 0.9rem; padding-left: 10px; font-style: italic;">暂无描述</p>'}
             </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 /**
@@ -68,6 +73,9 @@ function renderProductList() {
  * @returns {Promise<void>}
  */
 async function addProduct() {
+    const btn = document.getElementById('addProductBtn');
+    setButtonLoading(btn, '添加中...');
+    
     const nameInput = document.getElementById('newProductNameInput');
     const descInput = document.getElementById('newProductDescription');
     const productName = nameInput.value.trim();
@@ -76,6 +84,7 @@ async function addProduct() {
     // 验证产品名称必填
     if (!productName) {
         showStatus('请输入产品名称', 'error');
+        resetButton(btn);
         return;
     }
     
@@ -104,6 +113,8 @@ async function addProduct() {
         showStatus('产品添加成功！', 'success');
     } catch (error) {
         showStatus('添加失败: ' + error.message, 'error');
+    } finally {
+        resetButton(btn);
     }
 }
 

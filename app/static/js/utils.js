@@ -4,6 +4,63 @@
  * @description 该模块提供了整个应用所需的共享状态、状态消息显示、配置加载、标签页切换等通用功能
  */
 
+// ==================== 安全工具函数 ====================
+
+/**
+ * HTML转义函数 - 防止XSS攻击
+ * @param {string} str - 需要转义的字符串
+ * @returns {string} 转义后的字符串
+ */
+export function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    }).replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, function(c) {
+        return c;
+    });
+}
+
+/**
+ * 防抖函数
+ * @param {Function} fn - 需要防抖的函数
+ * @param {number} [delay=300] - 延迟时间（毫秒）
+ * @returns {Function} 防抖后的函数
+ */
+export function debounce(fn, delay = 300) {
+    let timer;
+    return function(...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), delay);
+    };
+}
+
+// ==================== 按钮状态管理 ====================
+
+/**
+ * 设置按钮为加载状态
+ * @param {HTMLButtonElement} btn - 按钮元素
+ * @param {string} [loadingText='处理中...'] - 加载状态显示文本
+ */
+export function setButtonLoading(btn, loadingText = '处理中...') {
+    if (!btn) return;
+    btn.disabled = true;
+    btn.dataset.originalText = btn.textContent;
+    btn.textContent = loadingText;
+}
+
+/**
+ * 重置按钮状态
+ * @param {HTMLButtonElement} btn - 按钮元素
+ */
+export function resetButton(btn) {
+    if (!btn) return;
+    btn.disabled = false;
+    btn.textContent = btn.dataset.originalText || btn.textContent;
+}
+
 // ==================== 全局状态存储 ====================
 
 /**
@@ -64,41 +121,41 @@ export function showStatus(message, type) {
  */
 export async function loadConfig() {
     try {
-        // 同时发起两个请求，提高效率
         const [productsResponse, configResponse] = await Promise.all([
             fetch('/api/products'),
             fetch('/api/config/info')
         ]);
         
+        if (!productsResponse.ok || !configResponse.ok) {
+            throw new Error(`HTTP 错误: 产品接口 ${productsResponse.status}, 配置接口 ${configResponse.status}`);
+        }
+        
         const productsData = await productsResponse.json();
         const configData = await configResponse.json();
         
-        // 更新全局状态
-        state.products = productsData.products;
-        state.config = configData;
+        state.products = productsData.products || [];
+        state.config = configData || {};
         
-        // 填充所有产品下拉菜单（新增和编辑）
         const productSelectIds = ['newProductName', 'editProductName'];
         
         productSelectIds.forEach(id => {
             const selectElement = document.getElementById(id);
             if (selectElement) {
-                // 清空并重新填充下拉菜单
                 selectElement.innerHTML = '<option value="">选择产品...</option>';
-                productsData.products.forEach(product => {
+                (productsData.products || []).forEach(product => {
                     const description = product.description || '';
                     selectElement.innerHTML += `<option value="${product.name}" data-description="${description}">${product.name}</option>`;
                 });
             }
         });
         
-        // 绑定产品选择事件，用于显示产品描述
         const newProductSelect = document.getElementById('newProductName');
         if (newProductSelect) {
             newProductSelect.addEventListener('change', displayProductDescription);
         }
     } catch (error) {
         console.error('加载配置失败:', error);
+        showStatus('加载配置失败，请刷新页面重试', 'error');
     }
 }
 
@@ -186,6 +243,27 @@ export function previewEditImage() {
 export function clearEditImage() {
     document.getElementById('editImageUrl').value = '';
     document.getElementById('editImagePreview').src = 'https://via.placeholder.com/200x200?text=暂无图片';
+}
+
+/**
+ * 预览编辑时的 TikTok 图片
+ * @description 根据输入的 URL 更新 TikTok 图片预览
+ */
+export function previewTiktokImage() {
+    const urlInput = document.getElementById('editTiktokImageUrl');
+    const url = urlInput.value.trim();
+    if (url) {
+        document.getElementById('editTiktokImagePreview').src = url;
+    }
+}
+
+/**
+ * 清除编辑时的 TikTok 图片
+ * @description 重置 TikTok 图片 URL 输入框和预览图片
+ */
+export function clearTiktokImage() {
+    document.getElementById('editTiktokImageUrl').value = '';
+    document.getElementById('editTiktokImagePreview').src = 'https://via.placeholder.com/200x200?text=暂无TikTok图片';
 }
 
 /**
@@ -396,6 +474,44 @@ export function createModal(contentHtml, options = {}) {
     };
 }
 
+// ==================== 定时发布功能 ====================
+
+/**
+ * 切换定时发布开关
+ * @description 启用/禁用定时发布时间选择器，默认设置为当前时间 +1 小时
+ */
+export function toggleScheduleTime() {
+    const enableSchedule = document.getElementById('enableSchedule');
+    const scheduleTime = document.getElementById('scheduleTime');
+    
+    if (!enableSchedule || !scheduleTime) return;
+    
+    if (enableSchedule.checked) {
+        scheduleTime.disabled = false;
+        if (!scheduleTime.value) {
+            const now = new Date();
+            now.setHours(now.getHours() + 1);
+            scheduleTime.value = formatDateTimeLocal(now);
+        }
+    } else {
+        scheduleTime.disabled = true;
+    }
+}
+
+/**
+ * 格式化日期为 datetime-local 输入框格式
+ * @param {Date} date - 日期对象
+ * @returns {string} 格式化后的日期字符串 (YYYY-MM-DDTHH:mm)
+ */
+function formatDateTimeLocal(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
 // ==================== 事件初始化 ====================
 
 /**
@@ -420,15 +536,14 @@ export function initEventListeners() {
         });
     });
 
-    // 知识库搜索监听
+    // 知识库搜索监听（带防抖）
     const knowledgeSearch = document.getElementById('knowledgeSearch');
     if (knowledgeSearch) {
-        knowledgeSearch.addEventListener('input', () => {
-            // 当输入变化时，触发知识库存的重新渲染（在 knowledge 模块中定义）
+        knowledgeSearch.addEventListener('input', debounce(() => {
             if (window.appKnowledge && window.appKnowledge.renderKnowledgeBase) {
                 window.appKnowledge.renderKnowledgeBase();
             }
-        });
+        }, 300));
     }
 
     // 图片来源切换监听
@@ -442,7 +557,14 @@ export function initEventListeners() {
         console.log('✅ 为图片来源单选框添加了事件监听器:', radio.value);
     });
     
+    // 初始化定时发布时间选择器状态
+    toggleScheduleTime();
+    
     // 初始化时确保正确显示默认选项
     toggleImageSource();
     console.log('✅ initEventListeners() 完成');
+}
+
+if (typeof window !== 'undefined') {
+    window.toggleScheduleTime = toggleScheduleTime;
 }
