@@ -29,8 +29,8 @@ from app.services.github_service import upload_image_to_github, convert_github_u
 
 logger = get_logger(__name__)
 
-# TikTok图片最大像素限制（1080x1080 = 1,166,400，这里设置为2,073,600即约1440x1440）
-TIKTOK_MAX_PIXELS = 2073600
+# TikTok图片最大像素限制（1080x1080 = 1,166,400）
+TIKTOK_MAX_PIXELS = 1166400
 
 
 def resize_image_for_tiktok(image_url, max_pixels=TIKTOK_MAX_PIXELS, product_name=None):
@@ -390,7 +390,7 @@ def create_post_with_media(channel_id, text, media_url, platform_type=None, imme
     """
     text = escape_graphql_string(text)
     
-    # Instagram特殊配置（分享到动态）
+    # 平台特殊配置
     metadata = ""
     if platform_type == "instagram":
         metadata = """
@@ -398,6 +398,14 @@ def create_post_with_media(channel_id, text, media_url, platform_type=None, imme
                 instagram: {
                     type: post,
                     shouldShareToFeed: true
+                }
+            }
+        """
+    elif platform_type == "facebook":
+        metadata = """
+            metadata: {
+                facebook: {
+                    type: post
                 }
             }
         """
@@ -519,6 +527,10 @@ def create_post(channel_id, text, media_url=None, platform_type=None, immediate=
         f'schedulingType: {scheduling_type}',
         f'mode: {mode}'
     ]
+    
+    # 添加平台特定的metadata配置
+    if platform_type == "facebook":
+        query_parts.append("""metadata: { facebook: { type: post } }""")
     
     # 添加定时时间（非立即发布）
     if not immediate:
@@ -666,7 +678,7 @@ def publish_to_platforms(text, media_url=None, platforms=None, immediate=False, 
                     })
                     continue
                 
-                # 处理TikTok图片
+                # 处理图片URL（TikTok使用预调整的URL或自动调整尺寸）
                 media_url_to_use = media_url
                 was_resized = False
                 if platform == "tiktok" and media_url:

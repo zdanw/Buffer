@@ -20,6 +20,7 @@ GitHub 图床上传服务模块
 import requests
 import base64
 import os
+import time
 from datetime import datetime
 from urllib.parse import unquote
 
@@ -136,8 +137,8 @@ def upload_local_image_to_github(local_image_path, remote_folder=None, skip_conf
         
         if product_name:
             # 有产品名时：{产品名}_{时间戳}{扩展名}
-            # 清理文件名中的非法字符
-            safe_name = product_name.replace('/', '_').replace('\\', '_').replace(':', '_').replace('*', '_').replace('?', '_').replace('"', '_').replace('<', '_').replace('>', '_').replace('|', '_')
+            # 清理文件名中的非法字符（空格、斜杠、冒号等）
+            safe_name = product_name.replace(' ', '_').replace('/', '_').replace('\\', '_').replace(':', '_').replace('*', '_').replace('?', '_').replace('"', '_').replace('<', '_').replace('>', '_').replace('|', '_')
             remote_file_name = f"{safe_name}_{timestamp}{file_ext}"
         else:
             # 无产品名时：{时间戳}_{4位随机数}{扩展名}
@@ -237,47 +238,66 @@ def upload_url_image_to_github(image_url, remote_folder=None, skip_config_check=
     temp_path = None
     try:
         global upload_history
-        logger.info(f"下载图片: {image_url}")
         
-        # 下载图片（禁用SSL验证以兼容某些服务器）
-        response = requests.get(
-            image_url, 
-            timeout=30, 
-            verify=False,
-            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
-        )
-        response.raise_for_status()
+        # 重试配置
+        max_retries = 3
+        retry_delay = 3
+        last_error = None
+        
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"下载图片: {image_url} (尝试 {attempt + 1}/{max_retries})")
+                
+                # 下载图片（禁用SSL验证以兼容某些服务器）
+                response = requests.get(
+                    image_url, 
+                    timeout=30, 
+                    verify=False,
+                    headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+                )
+                response.raise_for_status()
 
-        # 保存到临时文件
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        temp_filename = f"temp_{timestamp}.jpg"
-        temp_path = os.path.join(os.path.dirname(__file__), temp_filename)
+                # 保存到临时文件
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                temp_filename = f"temp_{timestamp}.jpg"
+                temp_path = os.path.join(os.path.dirname(__file__), temp_filename)
 
-        with open(temp_path, "wb") as f:
-            f.write(response.content)
+                with open(temp_path, "wb") as f:
+                    f.write(response.content)
 
-        logger.info(f"图片已保存到临时文件: {temp_path}")
+                logger.info(f"图片已保存到临时文件: {temp_path}")
 
-        # 调用本地上传函数
-        result = upload_local_image_to_github(temp_path, remote_folder, product_name=product_name)
+                # 调用本地上传函数
+                result = upload_local_image_to_github(temp_path, remote_folder, product_name=product_name)
 
-        # 记录上传历史
-        if result:
-            github_link = f"https://github.com/{Config.GITHUB_USER}/{Config.GITHUB_REPO}/blob/{Config.GITHUB_BRANCH}/{remote_folder}/{os.path.basename(temp_path)}"
-            upload_history.insert(0, {
-                'timestamp': datetime.now().isoformat(),
-                'cdn_url': result,
-                'github_url': github_link,
-                'filename': os.path.basename(temp_path),
-                'source': 'url',
-                'original_url': image_url
-            })
-            
-            # 限制历史记录数量
-            if len(upload_history) > 100:
-                upload_history = upload_history[:100]
+                # 记录上传历史
+                if result:
+                    github_link = f"https://github.com/{Config.GITHUB_USER}/{Config.GITHUB_REPO}/blob/{Config.GITHUB_BRANCH}/{remote_folder}/{os.path.basename(temp_path)}"
+                    upload_history.insert(0, {
+                        'timestamp': datetime.now().isoformat(),
+                        'cdn_url': result,
+                        'github_url': github_link,
+                        'filename': os.path.basename(temp_path),
+                        'source': 'url',
+                        'original_url': image_url
+                    })
+                    
+                    # 限制历史记录数量
+                    if len(upload_history) > 100:
+                        upload_history = upload_history[:100]
 
-        return result
+                return result
+                
+            except Exception as e:
+                last_error = e
+                logger.warning(f"⚠️ 上传 URL 图片失败 (尝试 {attempt + 1}/{max_retries}): {e}")
+                if attempt < max_retries - 1:
+                    logger.info(f"等待 {retry_delay} 秒后重试...")
+                    time.sleep(retry_delay)
+        
+        # 所有重试都失败
+        logger.error(f"❌ 上传 URL 图片失败，已重试 {max_retries} 次: {last_error}")
+        return None
 
     except Exception as e:
         logger.error(f"❌ 上传 URL 图片失败: {e}")

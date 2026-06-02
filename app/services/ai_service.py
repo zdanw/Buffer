@@ -338,30 +338,41 @@ def generate_image(prompt, model_id=None, aspect_ratio=None, resolution=None,
         else:
             logger.warning(f"❌ 产品参考图片处理失败: {image_reference_url}")
     
-    # 处理Logo参考图片
+    # 处理Logo参考图片（可选）
     if use_logo_as_reference and Config.LOGO_FILE_PATH:
-        if Config.LOGO_FILE_PATH.startswith(('http://', 'https://')):
-            logger.info(f"[Logo参考图片处理] 使用远程URL: {Config.LOGO_FILE_PATH}")
-            logo_url = Config.LOGO_FILE_PATH
-            reference_images.append({"image": logo_url, "weight": 0.2})
-            logger.info(f"✅ 添加Logo参考图片成功: {logo_url} (权重: 0.2)")
-        elif os.path.exists(Config.LOGO_FILE_PATH):
-            logger.info(f"[Logo参考图片处理] 文件存在，准备上传到GitHub: {Config.LOGO_FILE_PATH}")
-            if upload_image_to_github:
-                github_url = upload_image_to_github(Config.LOGO_FILE_PATH)
-                if github_url:
-                    if convert_github_url_to_cdn:
-                        cdn_url = convert_github_url_to_cdn(github_url)
-                        if cdn_url:
-                            github_url = cdn_url
-                    reference_images.append({"image": github_url, "weight": 0.2})
-                    logger.info(f"✅ Logo上传GitHub成功，使用URL: {github_url} (权重: 0.2)")
+        try:
+            if Config.LOGO_FILE_PATH.startswith(('http://', 'https://')):
+                logger.info(f"[Logo参考图片处理] 使用远程URL: {Config.LOGO_FILE_PATH}")
+                # 先验证URL是否可访问
+                try:
+                    response = requests.head(Config.LOGO_FILE_PATH, timeout=5)
+                    if response.status_code == 200:
+                        logo_url = Config.LOGO_FILE_PATH
+                        reference_images.append({"image": logo_url, "weight": 0.2})
+                        logger.info(f"✅ 添加Logo参考图片成功: {logo_url} (权重: 0.2)")
+                    else:
+                        logger.warning(f"⚠️ Logo URL不可访问，跳过Logo参考图片")
+                except Exception as e:
+                    logger.warning(f"⚠️ Logo URL验证失败，跳过Logo参考图片: {e}")
+            elif os.path.exists(Config.LOGO_FILE_PATH):
+                logger.info(f"[Logo参考图片处理] 文件存在，准备上传到GitHub: {Config.LOGO_FILE_PATH}")
+                if upload_image_to_github:
+                    github_url = upload_image_to_github(Config.LOGO_FILE_PATH)
+                    if github_url:
+                        if convert_github_url_to_cdn:
+                            cdn_url = convert_github_url_to_cdn(github_url)
+                            if cdn_url:
+                                github_url = cdn_url
+                        reference_images.append({"image": github_url, "weight": 0.2})
+                        logger.info(f"✅ Logo上传GitHub成功，使用URL: {github_url} (权重: 0.2)")
+                    else:
+                        logger.warning(f"⚠️ Logo上传GitHub失败，跳过Logo参考图片")
                 else:
-                    logger.warning(f"❌ Logo上传GitHub失败")
+                    logger.warning(f"⚠️ GitHub图床未配置，跳过Logo参考图片")
             else:
-                logger.warning(f"❌ GitHub图床未配置，无法上传Logo")
-        else:
-            logger.warning(f"❌ Logo参考图片文件不存在: {Config.LOGO_FILE_PATH}")
+                logger.warning(f"⚠️ Logo参考图片文件不存在，跳过Logo参考图片: {Config.LOGO_FILE_PATH}")
+        except Exception as e:
+            logger.warning(f"⚠️ 处理Logo参考图片时发生错误，跳过Logo参考图片: {e}")
     
     # 添加参考图片到请求数据
     if reference_images:

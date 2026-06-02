@@ -223,36 +223,43 @@ def publish():
         
         logger.info("发布完成", extra={"success_count": success_count, "total_platforms": len(platforms)})
         
-        # 获取TikTok调整后的图片URL
+        # 获取调整后的图片URL（TikTok或Facebook）
         tiktok_resized_url = None
         for r in results:
-            if r['status'] == 'success' and r.get('platform') == 'tiktok' and r.get('resized_url'):
+            if r['status'] == 'success' and r.get('resized_url'):
                 tiktok_resized_url = r['resized_url']
-                logger.info(f"TikTok图片已调整尺寸: {tiktok_resized_url[:50]}")
+                logger.info(f"图片已调整尺寸: {tiktok_resized_url[:50]} (平台: {r.get('platform')})")
                 break
         
         # 如果发布成功，保存到知识库
         if success_count > 0:
             if source == 'knowledge' and entry_id:
                 # 更新已存在条目的发布次数
-                updated_entry = update_publish_count(entry_id)
-                if updated_entry:
-                    logger.info("知识库内容发布次数已更新", extra={"entry_id": entry_id, "publish_count": updated_entry.get('发布次数')})
-                else:
-                    logger.warning("更新发布次数失败，条目可能不存在", extra={"entry_id": entry_id})
+                try:
+                    updated_entry = update_publish_count(entry_id)
+                    if updated_entry:
+                        logger.info("知识库内容发布次数已更新", extra={"entry_id": entry_id, "publish_count": updated_entry.get('发布次数')})
+                    else:
+                        logger.warning("更新发布次数失败，条目可能不存在", extra={"entry_id": entry_id})
+                except Exception as e:
+                    logger.error("更新知识库条目失败", extra={"entry_id": entry_id, "error": str(e)})
             else:
                 # 创建新条目
-                new_entry = {
-                    "产品名称": data.get('产品名称', ''),
-                    "文案内容": text,
-                    "prompt": data.get('prompt', ''),
-                    "image_url": uploaded_image_url,
-                    "image_url_tiktok": tiktok_resized_url,
-                    "来源": Config.SOURCE_PUBLISHED,
-                    "发布次数": 1
-                }
-                add_entry(new_entry)
-                logger.info("内容已保存到知识库", extra={"product_name": product_name})
+                try:
+                    new_entry = {
+                        "产品名称": data.get('产品名称', ''),
+                        "文案内容": text,
+                        "prompt": data.get('prompt', ''),
+                        "image_url": uploaded_image_url,
+                        "image_url_tiktok": tiktok_resized_url,
+                        "来源": Config.SOURCE_PUBLISHED,
+                        "发布次数": 1
+                    }
+                    logger.info("准备保存内容到知识库", extra={"product_name": product_name, "has_image": bool(uploaded_image_url)})
+                    add_entry(new_entry)
+                    logger.info("内容已保存到知识库", extra={"product_name": product_name})
+                except Exception as e:
+                    logger.error("保存内容到知识库失败", extra={"product_name": product_name, "error": str(e)})
         
         return jsonify({
             "status": "completed",
@@ -359,18 +366,26 @@ def auto_publish():
             else:
                 logger.warning("⚠️  GitHub 图床未配置或未启用")
         
+        # 如果图片为空，过滤掉需要图片的平台
+        platforms_to_use = platforms.copy()
+        if not uploaded_image_url:
+            platforms_requiring_image = ['tiktok', 'instagram']
+            platforms_to_use = [p for p in platforms if p not in platforms_requiring_image]
+            if platforms_to_use != platforms:
+                logger.warning(f"⚠️ 图片为空，跳过需要图片的平台: {[p for p in platforms if p in platforms_requiring_image]}")
+        
         # 发布到各个平台
-        results = publish_to_platforms(new_content, uploaded_image_url, platforms, immediate, schedule_time, product_name=entry.get('产品名称'))
+        results = publish_to_platforms(new_content, uploaded_image_url, platforms_to_use, immediate, schedule_time, product_name=entry.get('产品名称'))
         success_count = sum(1 for r in results if r['status'] == 'success')
         
         logger.info("发布完成", extra={"success_count": success_count, "total_platforms": len(results)})
         
-        # 获取TikTok调整后的图片URL
+        # 获取调整后的图片URL（TikTok或Facebook）
         tiktok_resized_url = None
         for r in results:
-            if r['status'] == 'success' and r.get('platform') == 'tiktok' and r.get('resized_url'):
+            if r['status'] == 'success' and r.get('resized_url'):
                 tiktok_resized_url = r['resized_url']
-                logger.info(f"TikTok图片已调整尺寸: {tiktok_resized_url[:50]}")
+                logger.info(f"图片已调整尺寸: {tiktok_resized_url[:50]} (平台: {r.get('platform')})")
                 break
         
         # 如果发布成功，保存到知识库
