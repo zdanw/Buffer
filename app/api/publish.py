@@ -475,11 +475,16 @@ def generate_content_for_knowledge():
         # 生成文案（直接传递产品信息，内部使用配置化提示词）
         content_result = generate_content(product_info)
         
+        # 检查生成结果
+        if not content_result:
+            logger.error("文案生成失败")
+            return jsonify({"error": "文案生成失败"}), 500
+        
         # 获取图片生成提示词（使用配置化的提示词生成函数）
         prompt_result = build_image_prompt(product_info)
         
         result = {
-            "文案内容": content_result,
+            "文案内容": content_result["content"],
             "prompt": prompt_result
         }
         

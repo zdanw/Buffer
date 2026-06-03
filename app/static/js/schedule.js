@@ -8,6 +8,8 @@
  * 4. 手动执行发布测试
  */
 
+import { API_BASE_URL } from './utils.js';
+
 /**
  * 切换调度类型
  * @param {string} type - 调度类型：'interval' 或 'cron'
@@ -29,8 +31,6 @@ export function switchScheduleType(type) {
         cronSettings.style.display = 'block';
     }
 }
-
-import { getApiBaseUrl } from './utils.js';
 
 /**
  * 创建定时任务
@@ -67,8 +67,7 @@ export async function createJob() {
     };
     
     try {
-        const apiBase = getApiBaseUrl();
-        const response = await fetch(`${apiBase}api/schedule/jobs`, {
+        const response = await fetch(`${API_BASE_URL}/api/schedule/jobs`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -114,8 +113,7 @@ function clearScheduleForm() {
  */
 export async function loadJobs() {
     try {
-        const apiBase = getApiBaseUrl();
-        const response = await fetch(`${apiBase}api/schedule/jobs`);
+        const response = await fetch(`${API_BASE_URL}/api/schedule/jobs`);
         const result = await response.json();
         
         if (response.ok) {
@@ -218,8 +216,7 @@ function escapeHtml(str) {
  */
 export async function toggleJob(jobId) {
     try {
-        const apiBase = getApiBaseUrl();
-        const response = await fetch(`${apiBase}api/schedule/jobs/${jobId}/toggle`, {
+        const response = await fetch(`${API_BASE_URL}/api/schedule/jobs/${jobId}/toggle`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -245,8 +242,7 @@ export async function toggleJob(jobId) {
  */
 export async function editJob(jobId) {
     try {
-        const apiBase = getApiBaseUrl();
-        const response = await fetch(`${apiBase}api/schedule/jobs/${jobId}`);
+        const response = await fetch(`${API_BASE_URL}/api/schedule/jobs/${jobId}`);
         const result = await response.json();
         
         if (response.ok) {
@@ -371,12 +367,11 @@ export async function editJob(jobId) {
                         enabled: enabledCheckbox.checked
                     };
                     
-                    const apiBase = getApiBaseUrl();
-                        const response = await fetch(`${apiBase}api/schedule/jobs/${jobId}`, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(data)
-                        });
+                    const response = await fetch(`${API_BASE_URL}/api/schedule/jobs/${jobId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
                     
                     const result = await response.json();
                     
@@ -418,8 +413,7 @@ export async function deleteJob(jobId) {
     }
     
     try {
-        const apiBase = getApiBaseUrl();
-        const response = await fetch(`${apiBase}api/schedule/jobs/${jobId}`, {
+        const response = await fetch(`${API_BASE_URL}/api/schedule/jobs/${jobId}`, {
             method: 'DELETE'
         });
         
@@ -458,8 +452,7 @@ export async function runNow() {
     button.disabled = true;
     
     try {
-        const apiBase = getApiBaseUrl();
-        const response = await fetch(`${apiBase}api/schedule/run-now`, {
+        const response = await fetch(`${API_BASE_URL}/api/schedule/run-now`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

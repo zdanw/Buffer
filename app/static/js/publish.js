@@ -8,7 +8,7 @@
  * 4. 定时发布支持
  */
 
-import { state, showStatus, setButtonLoading, resetButton, escapeHtml, getApiBaseUrl } from './utils.js';
+import { state, showStatus, setButtonLoading, resetButton, escapeHtml, API_BASE_URL } from './utils.js';
 
 // ==================== 定时发布功能 ====================
 
@@ -83,8 +83,7 @@ async function searchProducts() {
     }
 
     try {
-        const apiBase = getApiBaseUrl();
-        const response = await fetch(`${apiBase}api/search?keyword=${encodeURIComponent(keyword)}`);
+        const response = await fetch(`${API_BASE_URL}/api/search?keyword=${encodeURIComponent(keyword)}`);
         
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
@@ -211,8 +210,7 @@ async function publishExistingContent() {
             requestBody.schedule_time = scheduleTime;
         }
         
-        const apiBase = getApiBaseUrl();
-        const response = await fetch(`${apiBase}api/publish`, {
+        const response = await fetch(`${API_BASE_URL}/api/publish`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody)
@@ -309,8 +307,7 @@ async function generateContent(productName) {
             requestBody.entry_id = state.selectedProduct.id;
         }
         
-        const apiBase = getApiBaseUrl();
-        const response = await fetch(`${apiBase}api/generate`, {
+        const response = await fetch(`${API_BASE_URL}/api/generate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody)
@@ -368,8 +365,7 @@ async function regenerateContent() {
     showStatus('正在重新生成文案...', 'info');
     
     try {
-        const apiBase = getApiBaseUrl();
-        const response = await fetch(`${apiBase}api/regenerate`, {
+        const response = await fetch(`${API_BASE_URL}/api/regenerate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -407,8 +403,7 @@ async function regenerateImage() {
     showStatus('正在重新生成图片...', 'info');
     
     try {
-        const apiBase = getApiBaseUrl();
-        const response = await fetch(`${apiBase}api/regenerate`, {
+        const response = await fetch(`${API_BASE_URL}/api/regenerate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -446,8 +441,7 @@ async function regenerateBoth() {
     showStatus('正在重新生成全部内容...', 'info');
     
     try {
-        const apiBase = getApiBaseUrl();
-        const response = await fetch(`${apiBase}api/regenerate`, {
+        const response = await fetch(`${API_BASE_URL}/api/regenerate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -515,8 +509,7 @@ async function publishContent() {
             requestBody.schedule_time = scheduleTime;
         }
         
-        const apiBase = getApiBaseUrl();
-        const response = await fetch(`${apiBase}api/publish`, {
+        const response = await fetch(`${API_BASE_URL}/api/publish`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody)
@@ -560,8 +553,7 @@ async function autoPublish(productName, platforms) {
             requestBody.schedule_time = scheduleTime;
         }
         
-        const apiBase = getApiBaseUrl();
-        const response = await fetch(`${apiBase}api/auto_publish`, {
+        const response = await fetch(`${API_BASE_URL}/api/auto_publish`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody)
@@ -653,8 +645,7 @@ async function saveToKnowledge() {
             original_entry_id: state.currentData.original_entry?.id
         };
         
-        const apiBase = getApiBaseUrl();
-        const response = await fetch(`${apiBase}api/save-to-knowledge`, {
+        const response = await fetch(`${API_BASE_URL}/api/save-to-knowledge`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody)

@@ -4,6 +4,8 @@
  * @description 该模块提供了整个应用所需的共享状态、状态消息显示、配置加载、标签页切换等通用功能
  */
 
+export const API_BASE_URL = process.env.API_BASE_URL || '';
+
 // ==================== 安全工具函数 ====================
 
 /**
@@ -78,14 +80,6 @@ export function resetButton(btn) {
  */
 
 /**
- * 获取 API 基础 URL
- * @returns {string} API 基础 URL
- */
-export function getApiBaseUrl() {
-    return window.API_BASE_URL || '/';
-}
-
-/**
  * 全局应用状态
  * @type {AppState}
  */
@@ -128,11 +122,10 @@ export function showStatus(message, type) {
  * @returns {Promise<void>}
  */
 export async function loadConfig() {
-    const apiBase = getApiBaseUrl();
     try {
         const [productsResponse, configResponse] = await Promise.all([
-            fetch(`${apiBase}api/products`),
-            fetch(`${apiBase}api/config/info`)
+            fetch(`${API_BASE_URL}/api/products`),
+            fetch(`${API_BASE_URL}/api/config/info`)
         ]);
         
         if (!productsResponse.ok || !configResponse.ok) {

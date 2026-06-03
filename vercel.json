@@ -1,18 +1,21 @@
 {
   "builds": [
     {
-      "src": "wsgi.py",
-      "use": "@vercel/python"
+      "src": "app/static/**/*",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "app/templates/index.html",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "wsgi.py"
+      "dest": "/app/templates/index.html"
     }
   ],
   "env": {
-    "FLASK_ENV": "production",
-    "USE_REMOTE_MODELS": "true"
+    "API_BASE_URL": "@api_base_url"
   }
 }

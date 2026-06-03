@@ -8,7 +8,7 @@
  * 4. 搜索和筛选功能
  */
 
-import { state, showStatus, escapeHtml, setButtonLoading, resetButton, getApiBaseUrl } from './utils.js';
+import { state, showStatus, escapeHtml, setButtonLoading, resetButton, API_BASE_URL } from './utils.js';
 
 // ==================== 条目添加功能 ====================
 
@@ -78,8 +78,7 @@ async function addNewEntry() {
             formData.append('prompt', prompt);
             formData.append('file', file);
             
-            const apiBase = getApiBaseUrl();
-            response = await fetch(`${apiBase}api/entries`, {
+            response = await fetch(`${API_BASE_URL}/api/entries`, {
                 method: 'POST',
                 body: formData
             });
@@ -103,8 +102,7 @@ async function addNewEntry() {
                 'image_url': imageUrl
             };
             
-            const apiBase = getApiBaseUrl();
-            response = await fetch(`${apiBase}api/entries`, {
+            response = await fetch(`${API_BASE_URL}/api/entries`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(jsonData)
@@ -161,8 +159,7 @@ async function generateContentForKnowledge() {
     btn.textContent = '正在生成...';
     
     try {
-        const apiBase = getApiBaseUrl();
-        const response = await fetch(`${apiBase}api/generate-content`, {
+        const response = await fetch(`${API_BASE_URL}/api/generate-content`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -206,8 +203,7 @@ async function loadKnowledgeBase() {
     setButtonLoading(btn, '刷新中...');
     
     try {
-        const apiBase = getApiBaseUrl();
-        const response = await fetch(`${apiBase}api/entries`);
+        const response = await fetch(`${API_BASE_URL}/api/entries`);
         const data = await response.json();
         state.allKnowledgeEntries = data.entries;
         renderKnowledgeBase();
@@ -341,8 +337,7 @@ async function saveEdit() {
             image_url_tiktok: tiktokImageUrl
         };
         
-        const apiBase = getApiBaseUrl();
-        const response = await fetch(`${apiBase}api/entries/${state.currentEditEntry['id']}`, {
+        const response = await fetch(`${API_BASE_URL}/api/entries/${state.currentEditEntry['id']}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updateData)
@@ -380,8 +375,7 @@ async function deleteEntry(id) {
     if (!confirm('确定要删除这个条目吗？')) return;
     
     try {
-        const apiBase = getApiBaseUrl();
-        const response = await fetch(`${apiBase}api/entries/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/entries/${id}`, {
             method: 'DELETE'
         });
         
