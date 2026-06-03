@@ -15,9 +15,9 @@ env/
 data/
 !data/.gitkeep
 
-# 模型文件
-models/
-!models/.gitkeep
+# 模型文件缓存（保留模型但忽略缓存）
+models/**/.cache/
+models/**/*.metadata
 
 # IDE和系统文件
 .DS_Store

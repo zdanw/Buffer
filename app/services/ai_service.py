@@ -116,18 +116,8 @@ if not _initialized:
         
         local_model_path = os.path.join(local_model_dir, 'huggingface', 'hub', 'models--openai--clip-vit-base-patch32', 'snapshots', 'main')
         
-        # 优先尝试本地加载，如果失败则从HuggingFace下载
-        try:
-            clip_model = CLIPModel.from_pretrained(local_model_path, local_files_only=True)
-            clip_processor = CLIPProcessor.from_pretrained(local_model_path, local_files_only=True)
-            logger.info("✅ CLIP模型从本地加载成功")
-        except:
-            # 本地不存在，从HuggingFace下载
-            logger.info("⏳ CLIP模型本地不存在，正在从HuggingFace下载...")
-            clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
-            clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
-            logger.info("✅ CLIP模型从HuggingFace下载成功")
-        
+        clip_model = CLIPModel.from_pretrained(local_model_path, local_files_only=True)
+        clip_processor = CLIPProcessor.from_pretrained(local_model_path, local_files_only=True)
         device = "cuda" if torch.cuda.is_available() else "cpu"
         clip_model = clip_model.to(device)
         clip_model.eval()
