@@ -4,7 +4,7 @@
  * @description 该模块负责管理产品列表，包括加载、添加、编辑和删除产品的功能
  */
 
-import { showStatus, createModal, escapeHtml, setButtonLoading, resetButton } from './utils.js';
+import { showStatus, createModal, escapeHtml, setButtonLoading, resetButton, getApiBaseUrl } from './utils.js';
 
 /**
  * 当前产品列表数据
@@ -20,7 +20,8 @@ let products = [];
  */
 async function loadProducts() {
     try {
-        const response = await fetch('/api/products');
+        const apiBase = getApiBaseUrl();
+        const response = await fetch(`${apiBase}api/products`);
         const data = await response.json();
         products = data.products;
         renderProductList();
@@ -89,7 +90,8 @@ async function addProduct() {
     }
     
     try {
-        const response = await fetch('/api/products', {
+        const apiBase = getApiBaseUrl();
+        const response = await fetch(`${apiBase}api/products`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -172,7 +174,8 @@ async function editProduct(index) {
         saveBtn.textContent = '保存中...';
         
         try {
-            const response = await fetch(`/api/products/${index}`, {
+            const apiBase = getApiBaseUrl();
+            const response = await fetch(`${apiBase}api/products/${index}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
@@ -221,7 +224,8 @@ async function deleteProduct(index) {
     }
     
     try {
-        const response = await fetch(`/api/products/${index}`, {
+        const apiBase = getApiBaseUrl();
+        const response = await fetch(`${apiBase}api/products/${index}`, {
             method: 'DELETE'
         });
         

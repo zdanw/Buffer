@@ -78,6 +78,14 @@ export function resetButton(btn) {
  */
 
 /**
+ * 获取 API 基础 URL
+ * @returns {string} API 基础 URL
+ */
+export function getApiBaseUrl() {
+    return window.API_BASE_URL || '/';
+}
+
+/**
  * 全局应用状态
  * @type {AppState}
  */
@@ -120,10 +128,11 @@ export function showStatus(message, type) {
  * @returns {Promise<void>}
  */
 export async function loadConfig() {
+    const apiBase = getApiBaseUrl();
     try {
         const [productsResponse, configResponse] = await Promise.all([
-            fetch('/api/products'),
-            fetch('/api/config/info')
+            fetch(`${apiBase}api/products`),
+            fetch(`${apiBase}api/config/info`)
         ]);
         
         if (!productsResponse.ok || !configResponse.ok) {

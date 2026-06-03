@@ -1,0 +1,25 @@
+{
+  "builds": [
+    {
+      "src": "app/static/**/*",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "app/templates/index.html",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/",
+      "dest": "app/templates/index.html"
+    },
+    {
+      "src": "/static/(.*)",
+      "dest": "app/static/$1"
+    }
+  ],
+  "env": {
+    "API_BASE_URL": "https://your-railway-app.up.railway.app"
+  }
+}
