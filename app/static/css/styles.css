@@ -663,7 +663,58 @@ body {
     }
 }
 
-/* ==================== 13. 动画效果 ==================== */
+/* ==================== 13. 定时任务样式 ==================== */
+
+/**
+ * 定时任务卡片
+ */
+.schedule-job-card {
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    border: 1px solid #eee;
+}
+
+/**
+ * 状态徽章
+ */
+.status-badge {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+/**
+ * 运行中状态
+ */
+.status-badge.active {
+    background: #d4edda;
+    color: #155724;
+}
+
+/**
+ * 已禁用状态
+ */
+.status-badge.inactive {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/**
+ * 信息按钮
+ */
+.btn-info {
+    background: linear-gradient(135deg, #17a2b8 0%, #20c997 100%);
+    color: white;
+}
+
+.btn-info:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(23, 162, 184, 0.4);
+}
+
+/* ==================== 14. 动画效果 ==================== */
 
 /**
  * 加载动画

@@ -22,6 +22,7 @@
             <button class="tab active" onclick="window.appUtils.switchTab('publish')">内容发布</button>
             <button class="tab" onclick="window.appUtils.switchTab('knowledge')">知识库管理</button>
             <button class="tab" onclick="window.appUtils.switchTab('products')">产品管理</button>
+            <button class="tab" onclick="window.appUtils.switchTab('schedule')">定时发布</button>
         </div>
 
         <!-- ==================== 内容发布标签页 ==================== -->
@@ -136,6 +137,7 @@
                     <button id="regenerateContentBtn" class="btn btn-secondary" onclick="window.appPublish.regenerateContent()">重新生成文案</button>
                     <button id="regenerateImageBtn" class="btn btn-secondary" onclick="window.appPublish.regenerateImage()">重新生成图片</button>
                     <button id="regenerateBothBtn" class="btn btn-secondary" onclick="window.appPublish.regenerateBoth()">重新生成全部</button>
+                    <button id="saveToKnowledgeBtn" class="btn btn-info" onclick="window.appPublish.saveToKnowledge()">保存到知识库</button>
                     <button id="publishNewButton" class="btn btn-success" onclick="window.appPublish.publishContent()">发布内容</button>
                 </div>
             </div>
@@ -244,6 +246,125 @@
                     <h3>产品列表</h3>
                     <div id="productList" class="product-list"></div>
                 </div>
+            </div>
+        </div>
+
+        <!-- ==================== 定时发布标签页 ==================== -->
+        <div id="schedule-tab" class="tab-content">
+            <!-- 创建定时任务表单 -->
+            <div class="card">
+                <h2 class="card-title">创建定时发布任务</h2>
+                
+                <div class="form-group">
+                    <label for="scheduleJobName">任务名称</label>
+                    <input type="text" id="scheduleJobName" placeholder="例如：每日早9点发布">
+                </div>
+                
+                <!-- 调度类型选择 -->
+                <div class="form-group">
+                    <label>调度类型</label>
+                    <div class="mode-switch">
+                        <div class="mode-option active" data-schedule-type="interval" onclick="window.appSchedule.switchScheduleType('interval')">
+                            <h3>间隔模式</h3>
+                            <p>按固定时间间隔执行</p>
+                        </div>
+                        <div class="mode-option" data-schedule-type="cron" onclick="window.appSchedule.switchScheduleType('cron')">
+                            <h3>Cron模式</h3>
+                            <p>使用Cron表达式精确控制时间</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 间隔模式设置 -->
+                <div id="intervalSettings" class="form-group">
+                    <label for="intervalMinutes">间隔时间（分钟）</label>
+                    <input type="number" id="intervalMinutes" min="1" max="1440" value="60" placeholder="60">
+                    <p style="color: #888; font-size: 0.85rem; margin-top: 5px;">
+                        建议设置为大于生成内容所需时间的间隔
+                    </p>
+                </div>
+                
+                <!-- Cron模式设置 -->
+                <div id="cronSettings" class="form-group" style="display: none;">
+                    <label for="cronExpression">Cron表达式</label>
+                    <input type="text" id="cronExpression" placeholder="例如：0 9 * * *（每天9点）">
+                    <p style="color: #888; font-size: 0.85rem; margin-top: 5px;">
+                        格式: 分 时 日 月 周<br>
+                        示例: <code>0 9 * * *</code> 每天9点<br>
+                        <code>0 9,18 * * *</code> 每天9点和18点<br>
+                        <code>*/30 * * * *</code> 每30分钟
+                    </p>
+                </div>
+                
+                <!-- 发布平台选择 -->
+                <div class="form-group">
+                    <label>发布平台</label>
+                    <div class="platform-checkboxes">
+                        <label><input type="checkbox" name="schedulePlatform" value="tiktok" checked> 🎵 TikTok</label>
+                        <label><input type="checkbox" name="schedulePlatform" value="instagram" checked> 📷 Instagram</label>
+                        <label><input type="checkbox" name="schedulePlatform" value="facebook" checked> 📘 Facebook</label>
+                    </div>
+                </div>
+                
+                <!-- 每次发布数量 -->
+                <div class="form-group">
+                    <label for="countPerRun">每次发布产品数量</label>
+                    <input type="number" id="countPerRun" min="1" max="10" value="1" placeholder="1">
+                </div>
+                
+                <!-- 发布上限 -->
+                <div class="form-group">
+                    <label for="maxPublishCount">发布上限（可选）</label>
+                    <input type="number" id="maxPublishCount" min="1" placeholder="达到此数量后自动停止任务">
+                    <p style="color: #888; font-size: 0.85rem; margin-top: 5px;">
+                        留空表示无上限，持续发布
+                    </p>
+                </div>
+                
+                <!-- 启用状态 -->
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" id="scheduleEnabled" checked>
+                        <span>创建后立即启用</span>
+                    </label>
+                </div>
+                
+                <button id="createScheduleBtn" class="btn btn-success" onclick="window.appSchedule.createJob()">
+                    📅 创建定时任务
+                </button>
+            </div>
+            
+            <!-- 定时任务列表 -->
+            <div class="card">
+                <h2 class="card-title">定时任务列表</h2>
+                <button id="refreshScheduleBtn" class="btn btn-secondary btn-sm" onclick="window.appSchedule.loadJobs()">刷新</button>
+                <div id="scheduleJobList" class="schedule-job-list"></div>
+            </div>
+            
+            <!-- 手动执行测试 -->
+            <div class="card">
+                <h2 class="card-title">手动测试发布</h2>
+                <p style="color: #888; font-size: 0.9rem; margin-bottom: 15px;">
+                    立即执行一次发布流程（不影响定时任务）
+                </p>
+                
+                <div class="form-group">
+                    <label>选择平台</label>
+                    <div class="platform-checkboxes">
+                        <label><input type="checkbox" name="testPlatform" value="tiktok" checked> 🎵 TikTok</label>
+                        <label><input type="checkbox" name="testPlatform" value="instagram" checked> 📷 Instagram</label>
+                        <label><input type="checkbox" name="testPlatform" value="facebook" checked> 📘 Facebook</label>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="testCount">发布数量</label>
+                    <input type="number" id="testCount" min="1" max="5" value="1" placeholder="1">
+                </div>
+                
+                <button id="runNowBtn" class="btn btn-primary" onclick="window.appSchedule.runNow()">
+                    ⚡ 立即执行
+                </button>
             </div>
         </div>
     </div>

@@ -11,6 +11,7 @@ AI模型集成服务模块
 模块结构：
 - 初始化部分：加载GitHub图床模块和CLIP视觉模型
 - 基础工具函数：图片URL处理、请求头生成
+- 提示词生成：build_image_prompt（根据配置生成多样化提示词）
 - 文本生成：generate_content、generate_unique_content
 - 图片生成：generate_image、generate_unique_image
 - 相似度计算：calculate_similarity、calculate_image_similarity
@@ -28,6 +29,60 @@ import uuid
 import numpy as np
 from urllib.parse import quote
 from PIL import Image
+
+
+def build_image_prompt(product_description):
+    """
+    根据配置生成多样化的图片提示词
+    
+    核心思路：固定产品本体约束 + 随机化全维度场景/光影/构图/风格/环境变量
+    
+    Args:
+        product_description (str): 产品描述（从知识库提取）
+    
+    Returns:
+        str: 完整的图片生成提示词
+    """
+    # 从配置中读取随机变量池
+    viewpoints = Config.IMAGE_PROMPT_VIEWPOINTS
+    scenes = Config.IMAGE_PROMPT_SCENES
+    lighting = Config.IMAGE_PROMPT_LIGHTING
+    compositions = Config.IMAGE_PROMPT_COMPOSITIONS
+    styles = Config.IMAGE_PROMPT_STYLES
+    quality = Config.IMAGE_PROMPT_QUALITY
+    details = Config.IMAGE_PROMPT_DETAILS
+    
+    # 从每类随机抽取1项
+    random_viewpoint = random.choice(viewpoints)
+    random_scene = random.choice(scenes)
+    random_lighting = random.choice(lighting)
+    random_composition = random.choice(compositions)
+    random_style = random.choice(styles)
+    random_quality = random.choice(quality)
+    
+    # 随机追加1~2个细节词
+    num_details = random.randint(1, 2)
+    random_details = random.sample(details, num_details)
+    
+    # 拼接随机元素
+    random_elements = " ".join([
+        random_viewpoint,
+        random_scene,
+        random_lighting,
+        random_composition,
+        random_style,
+        random_quality,
+        *random_details
+    ])
+    
+    # 使用配置中的模板拼接完整提示词
+    prompt = Config.IMAGE_PROMPT_TEMPLATE.format(
+        product_description=product_description,
+        fixed_constraints=Config.IMAGE_PROMPT_FIXED_TEMPLATE.strip(),
+        random_elements=random_elements
+    )
+    
+    return prompt.strip()
 
 # 设置HuggingFace镜像源，加速模型下载
 os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
@@ -163,14 +218,96 @@ def ensure_image_url(image_source, upload_to_github=False):
         return None
 
 
+# 全局变量：维护最近生成的文案摘要，用于差别化约束
+recent_generations = []
+
+def extract_keywords(text, top_n=10):
+    """
+    从文本中提取高频关键词（简单实现）
+    
+    Args:
+        text (str): 输入文本
+        top_n (int): 返回的关键词数量
+    
+    Returns:
+        list: 关键词列表
+    """
+    if not text:
+        return []
+    
+    import re
+    # 移除标点符号和标签
+    cleaned_text = re.sub(r'[^\w\s]', '', text)
+    cleaned_text = re.sub(r'#\w+', '', cleaned_text)
+    
+    # 分词并统计频率（英文）
+    words = cleaned_text.lower().split()
+    word_counts = {}
+    for word in words:
+        if len(word) > 2:  # 过滤短词
+            word_counts[word] = word_counts.get(word, 0) + 1
+    
+    # 返回频率最高的词
+    sorted_words = sorted(word_counts.items(), key=lambda x: x[1], reverse=True)
+    return [word for word, count in sorted_words[:top_n]]
+
+
+def build_content_prompt(product_description, original_content="", previous_generation=""):
+    """
+    根据配置生成多样化的文案提示词
+    
+    核心思路：随机风格角色 + 反约束模板
+    
+    Args:
+        product_description (str): 产品描述
+        original_content (str): 原始文案（用于提取禁用词）
+        previous_generation (str): 上一次生成的文案（用于差别化约束）
+    
+    Returns:
+        tuple: (system_prompt, user_prompt)
+    """
+    # 随机选择叙述视角和写作风格
+    perspective = random.choice(Config.NARRATIVE_PERSPECTIVES)
+    writing_style = random.choice(Config.WRITING_STYLES)
+    
+    # 随机选择字数范围
+    min_words = Config.CONTENT_MIN_WORDS
+    max_words = Config.CONTENT_MAX_WORDS
+    target_word_count = random.randint(min_words, max_words)
+    
+    # 从原始文案提取禁用词
+    forbidden_words = extract_keywords(original_content, top_n=10)
+    forbidden_words_str = ", ".join(forbidden_words) if forbidden_words else "无"
+    
+    # 构建系统提示词（填充模板变量）
+    system_prompt = Config.CONTENT_GENERATION_SYSTEM_PROMPT.format(
+        narrative_perspective=perspective,
+        writing_style=writing_style,
+        word_count=f"{min_words}-{max_words}",
+        forbidden_words=forbidden_words_str
+    )
+    
+    # 构建用户提示词（产品信息）
+    user_prompt = f"基于以下产品信息，生成社交媒体文案：\n\n{product_description}"
+    
+    # 如果有上一次生成的内容，添加差别化提示
+    if previous_generation:
+        # 提取上一次的开头部分
+        previous_start = previous_generation[:50] if len(previous_generation) > 50 else previous_generation
+        differentiation_hint = Config.DIFFERENTIATION_PROMPT.format(previous_start=previous_start)
+        user_prompt = differentiation_hint + "\n\n" + user_prompt
+    
+    return system_prompt, user_prompt
+
+
 def generate_content(prompt, style=None):
     """
     使用DeepSeek模型生成社交媒体文案
     
-    支持多种写作风格：幽默搞笑、温情治愈、专业测评、故事叙述、实用干货
+    支持多种写作风格和叙述视角，自动实现多样化生成
     
     Args:
-        prompt (str): 生成文案的提示词
+        prompt (str): 生成文案的提示词（产品信息）
         style (str, optional): 指定写作风格，不指定则随机选择
     
     Returns:
@@ -181,20 +318,14 @@ def generate_content(prompt, style=None):
         logger.warning("DeepSeek API Key not configured")
         return None
     
-    # 可用写作风格列表
-    styles = ["幽默搞笑", "温情治愈", "专业测评", "故事叙述", "实用干货"]
-    selected_style = style if style else random.choice(styles)
+    # 获取上一次生成的文案用于差别化约束
+    previous_generation = recent_generations[-1] if recent_generations else ""
     
-    # 风格对应的temperature参数（控制生成随机性）
-    style_temperature = {
-        "幽默搞笑": 0.95,
-        "温情治愈": 0.85,
-        "专业测评": 0.7,
-        "故事叙述": 0.9,
-        "实用干货": 0.75
-    }
+    # 构建提示词
+    system_prompt, user_prompt = build_content_prompt(prompt, original_content="", previous_generation=previous_generation)
     
-    temperature = style_temperature.get(selected_style, 0.9)
+    # 选择temperature（根据写作风格调整）
+    temperature = random.uniform(0.7, 1.0)
     
     # API请求配置
     url = f"{Config.DEEPSEEK_API_URL}/chat/completions"
@@ -203,20 +334,17 @@ def generate_content(prompt, style=None):
         "Content-Type": "application/json"
     }
     
-    # 构建带风格的提示词
-    styled_prompt = f"【写作风格：{selected_style}】\n{prompt}"
-    
     # 请求数据
     data = {
         "model": Config.DEEPSEEK_MODEL,
         "messages": [
             {
                 "role": "system",
-                "content": Config.CONTENT_GENERATION_SYSTEM_PROMPT
+                "content": system_prompt
             },
             {
                 "role": "user",
-                "content": styled_prompt
+                "content": user_prompt
             }
         ],
         "max_tokens": 500,
@@ -238,6 +366,12 @@ def generate_content(prompt, style=None):
         if choices:
             content = choices[0].get("message", {}).get("content", "").strip()
             logger.info("文案生成成功", extra={"content_length": len(content)})
+            
+            # 记录最近生成的文案，用于差别化约束（最多保留3条）
+            recent_generations.append(content)
+            if len(recent_generations) > 3:
+                recent_generations.pop(0)
+            
             return content
         
         logger.warning("DeepSeek API返回空结果")
@@ -297,9 +431,8 @@ def generate_image(prompt, model_id=None, aspect_ratio=None, resolution=None,
     }
     size = size_map.get(aspect_ratio, "2048x2048")
     
-    # 负面提示词（禁止生成的内容）
-    negative_prompt = '''不要包含任何平台Logo、品牌标识、社交媒体图标、音符图标、音乐符号、心形图标、小红心、二维码、水印、网址、URL、文字、logo、商标、标签、边框、角标、水印文字、品牌名称、TikTok、小红书、Instagram、Facebook、抖音、微博、微信、twitter、youtube，
-    纯产品展示，干净背景，无任何标识，无任何文字，无水印,只能有提供的logo'''
+    # 使用配置中的负向提示词
+    negative_prompt = Config.IMAGE_NEGATIVE_PROMPT
     
     # 请求数据
     data = {
@@ -599,6 +732,205 @@ def calculate_image_similarity(image_url1, image_url2):
 # 嵌入向量缓存，避免重复计算
 _embedding_cache = {}
 
+# 图片特征缓存，避免重复计算
+_image_feature_cache = {}
+
+
+def extract_clip_feature(image_url):
+    """
+    提取单张图片的CLIP特征
+    
+    Args:
+        image_url (str): 图片URL
+    
+    Returns:
+        torch.Tensor: CLIP特征向量，失败返回None
+    """
+    if not CLIP_AVAILABLE:
+        logger.warning("CLIP model not available")
+        return None
+    
+    try:
+        image = load_image_from_source(image_url)
+        if image is None:
+            logger.error(f"Failed to load image: {image_url}")
+            return None
+        
+        inputs = clip_processor(images=[image], return_tensors="pt").to(device)
+        
+        with torch.no_grad():
+            vision_model = clip_model.vision_model
+            outputs = vision_model(**inputs)
+            feature = outputs.pooler_output[0]
+        
+        return feature
+    
+    except Exception as e:
+        logger.error(f"Error extracting CLIP feature: {e}")
+        return None
+
+
+def get_image_feature(image_url):
+    """
+    获取图片特征，带缓存机制
+    
+    Args:
+        image_url (str): 图片URL
+    
+    Returns:
+        torch.Tensor: CLIP特征向量，失败返回None
+    """
+    # 如果缓存未启用，直接计算
+    if not Config.ENABLE_IMAGE_FEATURE_CACHE:
+        return extract_clip_feature(image_url)
+    
+    # 检查缓存
+    if image_url in _image_feature_cache:
+        return _image_feature_cache[image_url]
+    
+    # 计算特征
+    feature = extract_clip_feature(image_url)
+    if feature is None:
+        return None
+    
+    # 缓存管理（FIFO策略）
+    if len(_image_feature_cache) >= Config.IMAGE_FEATURE_CACHE_SIZE:
+        # 删除最早添加的缓存
+        oldest_key = next(iter(_image_feature_cache))
+        del _image_feature_cache[oldest_key]
+    
+    _image_feature_cache[image_url] = feature
+    logger.debug(f"Cached image feature for: {image_url}")
+    return feature
+
+
+def batch_calculate_image_similarity(new_feature, existing_features):
+    """
+    批量计算相似度（向量化操作）
+    
+    Args:
+        new_feature (torch.Tensor): 新图片特征
+        existing_features (list): 已有图片特征列表
+    
+    Returns:
+        list: 相似度分数列表
+    """
+    if not existing_features:
+        return []
+    
+    try:
+        # 转换为张量进行批量计算
+        existing_tensor = torch.stack(existing_features).to(device)
+        new_tensor = new_feature.unsqueeze(0).to(device)
+        
+        # 计算余弦相似度（批量）
+        similarities = torch.nn.functional.cosine_similarity(new_tensor, existing_tensor)
+        
+        return similarities.cpu().numpy().tolist()
+    
+    except Exception as e:
+        logger.error(f"Error in batch image similarity calculation: {e}")
+        return []
+
+
+def get_adaptive_image_threshold(existing_count):
+    """
+    根据已有图片数量动态调整阈值
+    
+    Args:
+        existing_count (int): 已有图片数量
+    
+    Returns:
+        float: 自适应阈值
+    """
+    base_threshold = Config.IMAGE_SIMILARITY_THRESHOLD
+    
+    # 图片越多，阈值越低（允许更多变化）
+    if existing_count < 10:
+        return base_threshold  # 严格模式
+    elif existing_count < 50:
+        return base_threshold * 0.95
+    else:
+        return base_threshold * 0.9  # 宽松模式
+
+
+def is_image_unique_optimized(new_image_url, existing_images_info, threshold=None):
+    """
+    优化版图片唯一性检测
+    
+    Args:
+        new_image_url (str): 新图片URL
+        existing_images_info (list): 已有图片信息列表
+        threshold (float, optional): 相似度阈值
+    
+    Returns:
+        bool | None: True=唯一, False=重复, None=检测失败
+    """
+    if not existing_images_info:
+        return True
+    
+    # 获取自适应阈值
+    if threshold is None:
+        threshold = get_adaptive_image_threshold(len(existing_images_info))
+    
+    # 获取新图片特征（带缓存）
+    new_feature = get_image_feature(new_image_url)
+    if new_feature is None:
+        logger.warning("获取新图片特征失败")
+        return None
+    
+    # 批量获取已有图片特征
+    existing_features = []
+    valid_urls = []
+    
+    for info in existing_images_info:
+        url = info.get('url')
+        if url:
+            feature = get_image_feature(url)
+            if feature is not None:
+                existing_features.append(feature)
+                valid_urls.append(url)
+    
+    # 批量计算相似度
+    if not existing_features:
+        return True
+    
+    similarities = batch_calculate_image_similarity(new_feature, existing_features)
+    if not similarities:
+        return True
+    
+    max_similarity = max(similarities)
+    logger.info(f"图片相似度检测: 最高相似度 {max_similarity:.4f} (阈值: {threshold})")
+    
+    return max_similarity < threshold
+
+
+def preload_image_features():
+    """
+    启动时预加载知识库中的图片特征
+    """
+    if not Config.PRELOAD_IMAGE_FEATURES:
+        return
+    
+    try:
+        from app.services.chroma_service import get_all_entries
+        
+        entries = get_all_entries()
+        image_urls = [entry.get('image_url') for entry in entries if entry.get('image_url')]
+        
+        logger.info(f"预加载 {len(image_urls)} 张图片特征...")
+        
+        for url in image_urls:
+            try:
+                get_image_feature(url)
+            except Exception as e:
+                logger.warning(f"预加载失败: {url}, {e}")
+        
+        logger.info(f"图片特征预加载完成，已缓存 {len(_image_feature_cache)} 个特征")
+    
+    except Exception as e:
+        logger.warning(f"图片特征预加载失败: {e}")
+
 
 def get_embedding(text):
     """
@@ -844,12 +1176,14 @@ def generate_unique_content(base_prompt, existing_contents):
 
 def generate_unique_image(base_prompt, existing_images_info, model_id=None, reference_image_url=None, upload_to_github=False):
     """
-    生成与已有图片不重复的唯一图片
+    生成与已有图片不重复的唯一图片（优化版）
     
     功能特性：
-    1. 使用CLIP模型进行视觉相似度检测
-    2. CLIP不可用时降级为提示词相似度检测
-    3. 支持多轮重试机制
+    1. 使用CLIP模型进行视觉相似度检测（带缓存优化）
+    2. 支持批量相似度计算，提升性能
+    3. 自适应阈值调整（根据已有图片数量）
+    4. CLIP不可用时降级为提示词相似度检测
+    5. 支持多轮重试机制
     
     Args:
         base_prompt (str): 图片生成提示词
@@ -861,9 +1195,12 @@ def generate_unique_image(base_prompt, existing_images_info, model_id=None, refe
     Returns:
         str | None: 生成的唯一图片URL，失败返回最后一次生成的结果
     """
-    logger.info("开始生成唯一图片", extra={"prompt": base_prompt[:50], "attempts": Config.MAX_RETRY_ATTEMPTS})
+    logger.info("开始生成唯一图片", extra={"prompt": base_prompt[:50], "attempts": Config.MAX_RETRY_ATTEMPTS, "existing_count": len(existing_images_info)})
     
     last_generated_image = None
+    
+    # 获取自适应阈值
+    adaptive_threshold = get_adaptive_image_threshold(len(existing_images_info))
     
     for attempt in range(Config.MAX_RETRY_ATTEMPTS):
         logger.info(f"图片生成尝试 {attempt + 1}/{Config.MAX_RETRY_ATTEMPTS}")
@@ -876,21 +1213,30 @@ def generate_unique_image(base_prompt, existing_images_info, model_id=None, refe
         
         last_generated_image = new_image_url
         
-        is_unique = True
-        
-        # 使用CLIP进行视觉相似度检测
-        if CLIP_AVAILABLE:
-            for existing_image in existing_images_info:
-                existing_image_url = existing_image.get('image_url')
-                if existing_image_url:
-                    similarity = calculate_image_similarity(new_image_url, existing_image_url)
-                    logger.info(f"视觉相似度检测: {similarity:.4f} (阈值: {Config.IMAGE_SIMILARITY_THRESHOLD})")
-                    if similarity >= Config.IMAGE_SIMILARITY_THRESHOLD:
-                        logger.info(f"视觉相似度 {similarity:.4f} 超过阈值 {Config.IMAGE_SIMILARITY_THRESHOLD}，尝试重新生成")
-                        is_unique = False
-                        break
-        else:
-            # 降级为提示词相似度检测
+        # 使用优化版唯一性检测
+        if CLIP_AVAILABLE and existing_images_info:
+            is_unique = is_image_unique_optimized(new_image_url, existing_images_info, threshold=adaptive_threshold)
+            
+            if is_unique is None:
+                # 检测失败，降级为提示词检测
+                logger.info("图片唯一性检测失败，降级为提示词相似度检测")
+                is_unique = True
+                
+                for existing_image in existing_images_info:
+                    existing_prompt = existing_image.get('prompt', '')
+                    if existing_prompt:
+                        similarity = calculate_similarity(base_prompt, existing_prompt)
+                        logger.info(f"提示词相似度检测: {similarity:.4f} (阈值: {Config.SIMILARITY_THRESHOLD})")
+                        if similarity >= Config.SIMILARITY_THRESHOLD:
+                            logger.info(f"提示词相似度 {similarity:.4f} 超过阈值 {Config.SIMILARITY_THRESHOLD}，尝试重新生成")
+                            is_unique = False
+                            break
+            elif not is_unique:
+                logger.info(f"图片相似度超过阈值 {adaptive_threshold}，尝试重新生成")
+                continue
+        elif existing_images_info:
+            # CLIP不可用，降级为提示词相似度检测
+            is_unique = True
             for existing_image in existing_images_info:
                 existing_prompt = existing_image.get('prompt', '')
                 if existing_prompt:

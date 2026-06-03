@@ -20,6 +20,9 @@ import * as appKnowledge from './knowledge.js';
 /** 产品管理模块（产品列表管理） */
 import * as appProducts from './products.js';
 
+/** 定时发布模块（定时任务管理） */
+import * as appSchedule from './schedule.js';
+
 // ==================== 全局暴露 ====================
 
 /**
@@ -31,6 +34,7 @@ window.appUtils = appUtils;
 window.appPublish = appPublish;
 window.appKnowledge = appKnowledge;
 window.appProducts = appProducts;
+window.appSchedule = appSchedule;
 
 // ==================== 应用初始化 ====================
 

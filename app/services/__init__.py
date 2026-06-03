@@ -25,7 +25,16 @@ from .ai_service import (
     generate_content,
     generate_image,
     generate_unique_content,
-    generate_unique_image
+    generate_unique_image,
+    build_image_prompt,
+    build_content_prompt,
+    extract_keywords,
+    extract_clip_feature,
+    get_image_feature,
+    batch_calculate_image_similarity,
+    get_adaptive_image_threshold,
+    is_image_unique_optimized,
+    preload_image_features
 )
 from .github_service import (
     upload_image_to_github,
@@ -53,6 +62,15 @@ __all__ = [
     'generate_image',
     'generate_unique_content',
     'generate_unique_image',
+    'build_image_prompt',
+    'build_content_prompt',
+    'extract_keywords',
+    'extract_clip_feature',
+    'get_image_feature',
+    'batch_calculate_image_similarity',
+    'get_adaptive_image_threshold',
+    'is_image_unique_optimized',
+    'preload_image_features',
     'upload_image_to_github',
     'convert_github_url_to_cdn',
     'get_upload_history',

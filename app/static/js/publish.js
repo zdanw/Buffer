@@ -603,6 +603,51 @@ function displayPublishResults(data) {
     resultSection.scrollIntoView({ behavior: 'smooth' });
 }
 
+/**
+ * 保存生成的内容到知识库
+ */
+async function saveToKnowledge() {
+    // 验证是否有生成的内容
+    if (!state.currentData.generated_content) {
+        showStatus('请先生成内容', 'error');
+        return;
+    }
+    
+    const btn = document.getElementById('saveToKnowledgeBtn');
+    setButtonLoading(btn, '💾 保存中');
+    
+    showStatus('正在保存到知识库...', 'info');
+    
+    try {
+        const requestBody = {
+            product_name: state.currentData.original_entry?.产品名称 || '未命名产品',
+            content: state.currentData.generated_content,
+            image_url: state.currentData.generated_image || '',
+            prompt: state.currentData.original_entry?.prompt || '',
+            original_entry_id: state.currentData.original_entry?.id
+        };
+        
+        const response = await fetch('/api/save-to-knowledge', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showStatus(`✅ 保存成功！条目ID: ${data.entry_id}`, 'success');
+        } else {
+            showStatus('保存失败: ' + (data.error || '未知错误'), 'error');
+        }
+    } catch (error) {
+        showStatus('保存失败: ' + error.message, 'error');
+    } finally {
+        resetButton(btn);
+    }
+}
+
+
 // ==================== 模块导出 ====================
 
 export {
@@ -615,6 +660,7 @@ export {
     regenerateImage,
     regenerateBoth,
     publishContent,
+    saveToKnowledge,
     autoPublish,
     displayPublishResults,
     updateSelectedPlatformsDisplay

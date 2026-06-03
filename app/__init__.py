@@ -56,7 +56,9 @@ def register_blueprints(app):
         app (Flask): Flask应用实例
     """
     from app.api import api_bp
+    from app.api.schedule import schedule_bp
     app.register_blueprint(api_bp, url_prefix='/api')
+    app.register_blueprint(schedule_bp, url_prefix='/api')
 
 
 def register_error_handlers(app):

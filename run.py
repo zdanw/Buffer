@@ -27,6 +27,10 @@ app = create_app(config_name)
 # 注册首页路由
 register_index_route(app)
 
+# 初始化定时任务调度器
+from app.services.scheduler_service import init_scheduler
+init_scheduler()
+
 if __name__ == '__main__':
     print(f"🚀 启动应用，配置环境: {config_name}")
     print(f"📡 服务地址: http://localhost:{port}")

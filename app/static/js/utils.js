@@ -193,9 +193,17 @@ export function switchTab(tab) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     
-    // 激活选中的标签页
-    event.target.classList.add('active');
-    document.getElementById(`${tab}-tab`).classList.add('active');
+    // 激活选中的标签页按钮
+    const tabBtn = document.getElementById(`${tab}-tab`);
+    if (tabBtn) {
+        tabBtn.classList.add('active');
+    }
+    
+    // 激活选中的标签页内容
+    const tabContent = document.getElementById(`${tab}-content`);
+    if (tabContent) {
+        tabContent.classList.add('active');
+    }
 }
 
 // ==================== 图片处理函数 ====================

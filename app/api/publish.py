@@ -8,6 +8,7 @@
 3. 内容发布：发布到指定的社交平台
 4. 全自动发布：一键完成内容生成和发布
 5. 知识库内容生成：为知识库条目生成文案
+6. 保存到知识库：将生成的内容保存到知识库（无需发布）
 
 API端点列表：
 - POST /api/generate - 生成内容（文案+图片）
@@ -15,12 +16,13 @@ API端点列表：
 - POST /api/publish - 发布内容到社交平台
 - POST /api/auto_publish - 全自动发布
 - POST /api/generate-content - 为知识库生成文案
+- POST /api/save-to-knowledge - 保存生成的内容到知识库
 """
 
 from flask import request, jsonify
 
 from app.services.buffer_service import publish_to_platforms
-from app.services.ai_service import generate_unique_content, generate_unique_image, generate_content
+from app.services.ai_service import generate_unique_content, generate_unique_image, generate_content, build_image_prompt
 from app.services.chroma_service import get_random_entry_by_product, get_all_entries, add_entry, get_entry_by_id, update_publish_count
 from app.services.github_service import upload_image_to_github, is_configured as is_github_configured, convert_github_url_to_cdn
 from app.services.logger import get_logger
@@ -82,13 +84,16 @@ def generate():
         # 获取参考图片
         reference_image_url = entry.get('image_url')
         
-        # 生成独特文案
-        content_prompt = f"{Config.CONTENT_GENERATION_SYSTEM_PROMPT}\n\n为产品'{entry['产品名称']}'生成社交媒体文案"
-        new_content = generate_unique_content(content_prompt, existing_contents)
+        # 生成独特文案（直接传递产品信息）
+        product_description = f"产品名称: {entry['产品名称']}"
+        if '文案内容' in entry and entry['文案内容']:
+            product_description += f"\n参考文案: {entry['文案内容'][:100]}..."
+        new_content = generate_unique_content(product_description, existing_contents)
         logger.info("文案生成完成", extra={"content_length": len(new_content) if new_content else 0})
         
-        # 生成独特图片
-        image_prompt = f"{Config.IMAGE_GENERATION_PROMPT}\n\n{Config.IMAGE_GENERATION_CONSTRAINTS}"
+        # 生成独特图片（使用配置化的提示词生成函数）
+        product_description = entry.get('产品名称', '') + ' ' + entry.get('文案内容', '')[:100]
+        image_prompt = build_image_prompt(product_description)
         new_image = generate_unique_image(image_prompt, existing_images_info, reference_image_url=reference_image_url)
         logger.info("图片生成完成", extra={"image_url": new_image})
         
@@ -139,16 +144,19 @@ def regenerate():
     
     result = {}
     
-    # 重新生成文案
+    # 重新生成文案（直接传递产品信息）
     if regenerate_type == 'content' or regenerate_type == 'both':
         if '产品名称' not in original_entry:
             return jsonify({"error": "original_entry 缺少必要字段: 产品名称"}), 400
-        content_prompt = f"{Config.CONTENT_GENERATION_SYSTEM_PROMPT}\n\n为产品'{original_entry['产品名称']}'生成社交媒体文案"
-        result['generated_content'] = generate_unique_content(content_prompt, existing_contents)
+        product_description = f"产品名称: {original_entry['产品名称']}"
+        if '文案内容' in original_entry and original_entry['文案内容']:
+            product_description += f"\n参考文案: {original_entry['文案内容'][:100]}..."
+        result['generated_content'] = generate_unique_content(product_description, existing_contents)
     
-    # 重新生成图片
+    # 重新生成图片（使用配置化的提示词生成函数）
     if regenerate_type == 'image' or regenerate_type == 'both':
-        image_prompt = f"{Config.IMAGE_GENERATION_PROMPT}\n\n{Config.IMAGE_GENERATION_CONSTRAINTS}"
+        product_description = original_entry.get('产品名称', '') + ' ' + original_entry.get('文案内容', '')[:100]
+        image_prompt = build_image_prompt(product_description)
         result['generated_image'] = generate_unique_image(image_prompt, existing_images_info, reference_image_url=reference_image_url)
     
     return jsonify(result)
@@ -329,13 +337,16 @@ def auto_publish():
         # 获取参考图片
         reference_image_url = entry.get('image_url')
         
-        # 生成独特文案
-        content_prompt = f"{Config.CONTENT_GENERATION_SYSTEM_PROMPT}\n\n为产品'{entry['产品名称']}'生成社交媒体文案"
-        new_content = generate_unique_content(content_prompt, existing_contents)
+        # 生成独特文案（直接传递产品信息）
+        product_description = f"产品名称: {entry['产品名称']}"
+        if '文案内容' in entry and entry['文案内容']:
+            product_description += f"\n参考文案: {entry['文案内容'][:100]}..."
+        new_content = generate_unique_content(product_description, existing_contents)
         logger.info("文案生成完成", extra={"content_length": len(new_content) if new_content else 0})
         
-        # 生成独特图片
-        image_prompt = f"{Config.IMAGE_GENERATION_PROMPT}\n\n{Config.IMAGE_GENERATION_CONSTRAINTS}"
+        # 生成独特图片（使用配置化的提示词生成函数）
+        product_description = entry.get('产品名称', '') + ' ' + entry.get('文案内容', '')[:100]
+        image_prompt = build_image_prompt(product_description)
         new_image = generate_unique_image(image_prompt, existing_images_info, reference_image_url=reference_image_url)
         logger.info("图片生成完成", extra={"image_url": new_image})
         
@@ -450,24 +461,11 @@ def generate_content_for_knowledge():
         if product_description:
             product_info += f"\n产品描述: {product_description}"
         
-        # 构建文案生成提示词
-        content_prompt = f"""基于以下产品信息，生成社交媒体种草文案：
-
-{product_info}
-
-要求：
-1. 语言生动活泼，适合tiktok、facebook、Instagram等社交平台
-2. 突出产品特点和使用场景
-3. 字数控制在100-300字之间
-4. 包含相关标签（#hashtag）
-5. 保持积极、友好的语气
-6. 如果有产品描述，请充分利用描述信息"""
+        # 生成文案（直接传递产品信息，内部使用配置化提示词）
+        content_result = generate_content(product_info)
         
-        # 生成文案
-        content_result = generate_content(content_prompt)
-        
-        # 获取图片生成提示词
-        prompt_result = Config.IMAGE_GENERATION_PROMPT
+        # 获取图片生成提示词（使用配置化的提示词生成函数）
+        prompt_result = build_image_prompt(product_info)
         
         result = {
             "文案内容": content_result,
@@ -480,3 +478,74 @@ def generate_content_for_knowledge():
     except Exception as e:
         logger.error("知识库内容生成失败", extra={"product_name": product_name, "error": str(e)})
         return jsonify({"error": f"内容生成失败: {str(e)}"}), 500
+
+
+@api_bp.route('/save-to-knowledge', methods=['POST'])
+def save_to_knowledge():
+    """
+    将生成的内容保存到知识库（无需发布）
+    
+    用于半自动生成模式，生成内容预览后可手动保存到知识库。
+    
+    请求参数（JSON）：
+    - product_name (str): 产品名称
+    - content (str): 生成的文案内容
+    - image_url (str): 生成的图片URL
+    - prompt (str, optional): 图片生成提示词
+    - original_entry_id (str, optional): 原始条目ID（如果是从现有条目生成）
+    
+    返回值（JSON）：
+    {
+        "success": true,
+        "message": "保存成功",
+        "entry_id": 新条目ID
+    }
+    """
+    data = request.json
+    product_name = data.get('product_name', '')
+    content = data.get('content', '')
+    image_url = data.get('image_url', '')
+    prompt = data.get('prompt', '')
+    original_entry_id = data.get('original_entry_id')
+    
+    logger.info("开始保存内容到知识库", extra={"product_name": product_name})
+    
+    try:
+        # 验证必填字段
+        if not product_name:
+            return jsonify({"error": "缺少产品名称"}), 400
+        if not content:
+            return jsonify({"error": "缺少文案内容"}), 400
+        
+        # 创建新条目
+        new_entry = {
+            "产品名称": product_name,
+            "文案内容": content,
+            "prompt": prompt,
+            "image_url": image_url,
+            "来源": Config.SOURCE_AI,
+            "发布次数": 0
+        }
+        
+        # 如果有原始条目ID，添加引用
+        if original_entry_id:
+            new_entry["original_entry_id"] = original_entry_id
+        
+        # 添加到知识库
+        result = add_entry(new_entry)
+        
+        # add_entry 成功时返回 entry 对象，失败时抛出异常
+        if result and result.get('id'):
+            logger.info("内容保存到知识库成功", extra={"product_name": product_name, "entry_id": result.get('id')})
+            return jsonify({
+                "success": True,
+                "message": "保存成功",
+                "entry_id": result.get('id')
+            })
+        else:
+            logger.error("保存到知识库失败", extra={"product_name": product_name})
+            return jsonify({"error": "保存失败"}), 500
+        
+    except Exception as e:
+        logger.error("保存到知识库失败", extra={"product_name": product_name, "error": str(e)})
+        return jsonify({"error": f"保存失败: {str(e)}"}), 500
