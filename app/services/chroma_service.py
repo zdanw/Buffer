@@ -24,10 +24,21 @@ logger = get_logger(__name__)
 CHROMA_DIR = Config.CHROMA_DB_DIR
 LOCAL_EMBEDDING_MODEL_PATH = Config.LOCAL_EMBEDDING_MODEL_PATH
 
-sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(
-    model_name=LOCAL_EMBEDDING_MODEL_PATH,
-    trust_remote_code=True
-)
+try:
+    # 优先尝试本地模型
+    sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(
+        model_name=LOCAL_EMBEDDING_MODEL_PATH,
+        trust_remote_code=True
+    )
+    logger.info("✅ 嵌入模型从本地加载成功")
+except Exception as e:
+    # 本地模型不存在，使用在线模型
+    logger.warning(f"本地嵌入模型加载失败: {e}，将使用在线模型")
+    sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(
+        model_name=Config.ONLINE_EMBEDDING_MODEL_NAME,
+        trust_remote_code=True
+    )
+    logger.info("✅ 嵌入模型从HuggingFace加载成功")
 
 client = chromadb.PersistentClient(
     path=CHROMA_DIR,
