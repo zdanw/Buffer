@@ -30,6 +30,14 @@ import numpy as np
 from urllib.parse import quote
 from PIL import Image
 
+# 设置HuggingFace镜像源，加速模型下载
+os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+
+from app.config import Config
+from app.services.logger import get_logger
+
+logger = get_logger(__name__)
+
 
 def build_image_prompt(product_description):
     """
@@ -83,14 +91,6 @@ def build_image_prompt(product_description):
     )
     
     return prompt.strip()
-
-# 设置HuggingFace镜像源，加速模型下载
-os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
-
-from app.config import Config
-from app.services.logger import get_logger
-
-logger = get_logger(__name__)
 
 # 模块初始化标志，确保只初始化一次
 _initialized = False
@@ -311,7 +311,8 @@ def generate_content(prompt, style=None):
         style (str, optional): 指定写作风格，不指定则随机选择
     
     Returns:
-        str | None: 生成的文案内容，失败返回None
+        dict | None: 包含生成的文案内容和提示词的字典，失败返回None
+                     格式: {"content": str, "prompt": str}
     """
     # 检查API配置
     if not Config.DEEPSEEK_API_KEY:
@@ -323,6 +324,9 @@ def generate_content(prompt, style=None):
     
     # 构建提示词
     system_prompt, user_prompt = build_content_prompt(prompt, original_content="", previous_generation=previous_generation)
+    
+    # 组合最终的完整提示词
+    full_prompt = f"System: {system_prompt}\n\nUser: {user_prompt}"
     
     # 选择temperature（根据写作风格调整）
     temperature = random.uniform(0.7, 1.0)
@@ -372,7 +376,7 @@ def generate_content(prompt, style=None):
             if len(recent_generations) > 3:
                 recent_generations.pop(0)
             
-            return content
+            return {"content": content, "prompt": full_prompt}
         
         logger.warning("DeepSeek API返回空结果")
         return None
@@ -1091,7 +1095,8 @@ def generate_unique_content(base_prompt, existing_contents):
         existing_contents (list): 已有文案列表
     
     Returns:
-        str | None: 生成的唯一文案，失败返回最后一次生成的结果
+        dict | None: 包含生成的唯一文案和提示词的字典，失败返回最后一次生成的结果
+                     格式: {"content": str, "prompt": str}
     """
     valid_contents = [c for c in existing_contents if c and c.strip()]
     logger.info(f"开始生成唯一文案，待比较文案数量: {len(valid_contents)}")
@@ -1099,8 +1104,8 @@ def generate_unique_content(base_prompt, existing_contents):
     # 知识库为空时直接生成
     if len(valid_contents) == 0:
         logger.info("知识库为空，直接生成文案（不进行重复检测）")
-        new_content = generate_content(base_prompt)
-        return new_content
+        result = generate_content(base_prompt)
+        return result
     
     # 决定使用哪种检测方式
     use_optimized = len(valid_contents) > 50
@@ -1110,10 +1115,12 @@ def generate_unique_content(base_prompt, existing_contents):
     
     for attempt in range(Config.MAX_RETRY_ATTEMPTS):
         logger.info(f"文案生成尝试 {attempt + 1}/{Config.MAX_RETRY_ATTEMPTS}")
-        new_content = generate_content(base_prompt)
-        if not new_content:
+        result = generate_content(base_prompt)
+        if not result:
             logger.warning(f"文案生成失败，继续重试")
             continue
+        
+        new_content = result["content"]
         
         # 动态调整阈值
         current_threshold = Config.SIMILARITY_THRESHOLD + threshold_adjustments[min(attempt, len(threshold_adjustments)-1)]
@@ -1140,7 +1147,7 @@ def generate_unique_content(base_prompt, existing_contents):
                 logger.info("Chroma索引检测失败，降级到批量比较")
             elif is_unique:
                 logger.info(f"文案通过Chroma索引检测（唯一），生成成功")
-                return new_content
+                return result
             else:
                 logger.info(f"内容重复检测(优化): 重试第 {attempt + 1} 次")
                 continue
@@ -1159,7 +1166,7 @@ def generate_unique_content(base_prompt, existing_contents):
         # 判断是否通过检测
         if len(similarities) == 0 or max_similarity < current_threshold:
             logger.info(f"文案通过相似度检测（相似度: {max_similarity:.4f} < {current_threshold:.2f}），生成成功")
-            return new_content
+            return result
         
         # 输出最相似内容信息
         if len(similarities) > 0:
@@ -1171,7 +1178,7 @@ def generate_unique_content(base_prompt, existing_contents):
     
     # 达到最大重试次数，返回最后一次结果
     logger.warning(f"经过 {Config.MAX_RETRY_ATTEMPTS} 次尝试仍无法生成唯一文案，返回最后一次结果")
-    return new_content
+    return result
 
 
 def generate_unique_image(base_prompt, existing_images_info, model_id=None, reference_image_url=None, upload_to_github=False):

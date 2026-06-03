@@ -1,0 +1,10 @@
+[build]
+builder = "python"
+buildCommand = "pip install -r requirements.txt"
+
+[deploy]
+startCommand = "gunicorn --workers=2 --bind=0.0.0.0:$PORT wsgi:app"
+
+[env]
+FLASK_ENV = "production"
+PORT = "8000"

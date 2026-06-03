@@ -1,6 +1,7 @@
 # Web框架和基础依赖
 Flask==3.0.0
 flask-cors==4.0.0
+gunicorn==21.2.0
 
 # 向量数据库和嵌入模型
 chromadb==0.4.24

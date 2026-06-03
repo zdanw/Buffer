@@ -88,7 +88,9 @@ def generate():
         product_description = f"产品名称: {entry['产品名称']}"
         if '文案内容' in entry and entry['文案内容']:
             product_description += f"\n参考文案: {entry['文案内容'][:100]}..."
-        new_content = generate_unique_content(product_description, existing_contents)
+        content_result = generate_unique_content(product_description, existing_contents)
+        new_content = content_result["content"] if content_result else None
+        content_prompt = content_result["prompt"] if content_result else ""
         logger.info("文案生成完成", extra={"content_length": len(new_content) if new_content else 0})
         
         # 生成独特图片（使用配置化的提示词生成函数）
@@ -101,6 +103,8 @@ def generate():
             "original_entry": entry,
             "generated_content": new_content,
             "generated_image": new_image,
+            "content_prompt": content_prompt,
+            "image_prompt": image_prompt,
             "mode": mode
         }
         
@@ -151,13 +155,16 @@ def regenerate():
         product_description = f"产品名称: {original_entry['产品名称']}"
         if '文案内容' in original_entry and original_entry['文案内容']:
             product_description += f"\n参考文案: {original_entry['文案内容'][:100]}..."
-        result['generated_content'] = generate_unique_content(product_description, existing_contents)
+        content_result = generate_unique_content(product_description, existing_contents)
+        result['generated_content'] = content_result["content"] if content_result else None
+        result['content_prompt'] = content_result["prompt"] if content_result else ""
     
     # 重新生成图片（使用配置化的提示词生成函数）
     if regenerate_type == 'image' or regenerate_type == 'both':
         product_description = original_entry.get('产品名称', '') + ' ' + original_entry.get('文案内容', '')[:100]
         image_prompt = build_image_prompt(product_description)
         result['generated_image'] = generate_unique_image(image_prompt, existing_images_info, reference_image_url=reference_image_url)
+        result['image_prompt'] = image_prompt
     
     return jsonify(result)
 
@@ -341,7 +348,9 @@ def auto_publish():
         product_description = f"产品名称: {entry['产品名称']}"
         if '文案内容' in entry and entry['文案内容']:
             product_description += f"\n参考文案: {entry['文案内容'][:100]}..."
-        new_content = generate_unique_content(product_description, existing_contents)
+        content_result = generate_unique_content(product_description, existing_contents)
+        new_content = content_result["content"] if content_result else None
+        content_prompt = content_result["prompt"] if content_result else ""
         logger.info("文案生成完成", extra={"content_length": len(new_content) if new_content else 0})
         
         # 生成独特图片（使用配置化的提示词生成函数）
@@ -420,6 +429,8 @@ def auto_publish():
             "product_name": product_name,
             "generated_content": new_content,
             "generated_image": new_image,
+            "content_prompt": content_prompt,
+            "image_prompt": image_prompt,
             "publish_results": results
         })
         

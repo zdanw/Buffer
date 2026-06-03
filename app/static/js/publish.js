@@ -324,12 +324,18 @@ async function generateContent(productName) {
         state.currentData = {
             original_entry: data.original_entry,
             generated_content: data.generated_content,
-            generated_image: data.generated_image
+            generated_image: data.generated_image,
+            content_prompt: data.content_prompt || '',
+            image_prompt: data.image_prompt || ''
         };
         
         // 显示生成的内容
         document.getElementById('generatedImage').src = data.generated_image || 'https://via.placeholder.com/400x400?text=图片生成失败';
         document.getElementById('generatedContent').textContent = data.generated_content || '文案生成失败';
+        
+        // 显示提示词
+        document.getElementById('contentPromptDisplay').textContent = data.content_prompt || '暂无文案提示词';
+        document.getElementById('imagePromptDisplay').textContent = data.image_prompt || '暂无图片提示词';
         
         document.getElementById('previewSection').classList.add('active');
         document.getElementById('publishResultSection').classList.remove('active');
@@ -370,7 +376,9 @@ async function regenerateContent() {
         
         const data = await response.json();
         state.currentData.generated_content = data.generated_content;
+        state.currentData.content_prompt = data.content_prompt || '';
         document.getElementById('generatedContent').textContent = data.generated_content || '文案生成失败';
+        document.getElementById('contentPromptDisplay').textContent = data.content_prompt || '暂无文案提示词';
         showStatus('文案重新生成完成', 'success');
     } catch (error) {
         showStatus('重新生成失败: ' + error.message, 'error');
@@ -406,7 +414,9 @@ async function regenerateImage() {
         
         const data = await response.json();
         state.currentData.generated_image = data.generated_image;
+        state.currentData.image_prompt = data.image_prompt || '';
         document.getElementById('generatedImage').src = data.generated_image || 'https://via.placeholder.com/400x400?text=图片生成失败';
+        document.getElementById('imagePromptDisplay').textContent = data.image_prompt || '暂无图片提示词';
         showStatus('图片重新生成完成', 'success');
     } catch (error) {
         showStatus('重新生成失败: ' + error.message, 'error');
@@ -443,9 +453,13 @@ async function regenerateBoth() {
         const data = await response.json();
         state.currentData.generated_content = data.generated_content;
         state.currentData.generated_image = data.generated_image;
+        state.currentData.content_prompt = data.content_prompt || '';
+        state.currentData.image_prompt = data.image_prompt || '';
         
         document.getElementById('generatedContent').textContent = data.generated_content || '文案生成失败';
         document.getElementById('generatedImage').src = data.generated_image || 'https://via.placeholder.com/400x400?text=图片生成失败';
+        document.getElementById('contentPromptDisplay').textContent = data.content_prompt || '暂无文案提示词';
+        document.getElementById('imagePromptDisplay').textContent = data.image_prompt || '暂无图片提示词';
         showStatus('内容重新生成完成', 'success');
     } catch (error) {
         showStatus('重新生成失败: ' + error.message, 'error');
@@ -555,12 +569,16 @@ async function autoPublish(productName, platforms) {
         // 保存生成的内容
         state.currentData = {
             generated_content: data.generated_content,
-            generated_image: data.generated_image
+            generated_image: data.generated_image,
+            content_prompt: data.content_prompt || '',
+            image_prompt: data.image_prompt || ''
         };
         
         // 显示生成的内容
         document.getElementById('generatedImage').src = data.generated_image || 'https://via.placeholder.com/400x400?text=图片生成失败';
         document.getElementById('generatedContent').textContent = data.generated_content || '文案生成失败';
+        document.getElementById('contentPromptDisplay').textContent = data.content_prompt || '暂无文案提示词';
+        document.getElementById('imagePromptDisplay').textContent = data.image_prompt || '暂无图片提示词';
         
         document.getElementById('previewSection').classList.add('active');
         displayPublishResults(data);
