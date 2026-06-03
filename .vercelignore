@@ -1,0 +1,32 @@
+# 排除大型模型文件
+models/
+
+# 排除数据目录
+data/
+
+# 排除 Git 目录
+.git/
+
+# 排除虚拟环境
+venv/
+myenv/
+env/
+
+# 排除 Python 缓存
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 排除 IDE 文件
+.vscode/
+.idea/
+
+# 排除文档
+*.md
+*.toml
+*.example
+
+# 排除临时文件
+*.bak
+*.tmp

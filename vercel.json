@@ -2,19 +2,7 @@
   "builds": [
     {
       "src": "wsgi.py",
-      "use": "@vercel/python",
-      "config": {
-        "excludeFiles": [
-          "models/**",
-          "*.md",
-          "*.toml",
-          "*.example",
-          ".git/**",
-          "data/**",
-          "__pycache__/**",
-          "*.pyc"
-        ]
-      }
+      "use": "@vercel/python"
     }
   ],
   "routes": [
