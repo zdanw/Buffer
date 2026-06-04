@@ -25,8 +25,7 @@ CHROMA_DIR = Config.CHROMA_DB_DIR
 LOCAL_EMBEDDING_MODEL_PATH = Config.LOCAL_EMBEDDING_MODEL_PATH
 
 sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(
-    model_name=LOCAL_EMBEDDING_MODEL_PATH,
-    trust_remote_code=True
+    model_name=LOCAL_EMBEDDING_MODEL_PATH
 )
 
 client = chromadb.PersistentClient(
