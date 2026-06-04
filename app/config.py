@@ -52,7 +52,7 @@ class Config:
     UPLOAD_DIR = os.path.join(DATA_DIR, 'uploads')
     CHROMA_DB_DIR = os.path.join(DATA_DIR, 'chroma_db')
     LOG_DIR = os.path.join(DATA_DIR, 'logs')
-    LOCAL_EMBEDDING_MODEL_PATH = os.path.join(BASE_DIR, 'models', 'qwen3-embedding-0.6b')
+    LOCAL_EMBEDDING_MODEL_PATH = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
     LOGO_FILE_PATH = "https://cdn.jsdelivr.net/gh/zdanw/my-image-bed@main/images/logo.png"
     PRODUCTS_FILE = os.path.join(DATA_DIR, 'products.json')
 
