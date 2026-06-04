@@ -52,7 +52,23 @@ class Config:
     UPLOAD_DIR = os.path.join(DATA_DIR, 'uploads')
     CHROMA_DB_DIR = os.path.join(DATA_DIR, 'chroma_db')
     LOG_DIR = os.path.join(DATA_DIR, 'logs')
-    LOCAL_EMBEDDING_MODEL_PATH = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
+    
+    # 模型路径配置（优先使用环境变量）
+    # 本地开发使用相对路径，Railway部署时模型已包含在仓库中
+    LOCAL_EMBEDDING_MODEL_PATH = os.getenv(
+        "LOCAL_EMBEDDING_MODEL_PATH", 
+        os.path.join(BASE_DIR, 'models', 'qwen3-embedding-0.6b')
+    )
+    CLIP_MODEL_PATH = os.getenv(
+        "CLIP_MODEL_PATH", 
+        os.path.join(BASE_DIR, 'models', 'huggingface', 'hub', 'models--openai--clip-vit-base-patch32', 'snapshots', 'main')
+    )
+    
+    # 模型下载配置（当本地模型不存在时自动从HuggingFace下载）
+    HF_EMBEDDING_MODEL_NAME = os.getenv("HF_EMBEDDING_MODEL_NAME", "BAAI/bge-large-en-v1.5")
+    HF_CLIP_MODEL_NAME = os.getenv("HF_CLIP_MODEL_NAME", "openai/clip-vit-base-patch32")
+    AUTO_DOWNLOAD_MODEL = os.getenv("AUTO_DOWNLOAD_MODEL", "true").lower() == "true"
+    
     LOGO_FILE_PATH = "https://cdn.jsdelivr.net/gh/zdanw/my-image-bed@main/images/logo.png"
     PRODUCTS_FILE = os.path.join(DATA_DIR, 'products.json')
 

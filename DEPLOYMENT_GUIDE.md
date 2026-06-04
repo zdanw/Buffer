@@ -58,6 +58,26 @@
 | `DEEPSEEK_API_KEY` | `your-deepseek-api-key` | DeepSeek API 密钥 |
 | `CORS_ORIGINS` | `https://your-vercel-app.vercel.app` | Vercel 前端域名 |
 | `SECRET_KEY` | `your-secret-key` | 应用密钥（随机生成） |
+| `AUTO_DOWNLOAD_MODEL` | `false` | 是否自动从HuggingFace下载模型（模型已在仓库中时设为false） |
+
+**模型配置说明：**
+
+项目使用两个AI模型：
+1. **嵌入模型** (`qwen3-embedding-0.6b`) - 用于文本相似度计算
+2. **CLIP模型** (`openai/clip-vit-base-patch32`) - 用于图片相似度计算
+
+模型文件已包含在 `models/` 目录中，部署到 Railway 时会自动加载。
+
+**可选环境变量：**
+
+| 变量名 | 默认值 | 说明 |
+|--------|--------|------|
+| `LOCAL_EMBEDDING_MODEL_PATH` | `models/qwen3-embedding-0.6b` | 嵌入模型本地路径 |
+| `CLIP_MODEL_PATH` | `models/huggingface/hub/models--openai--clip-vit-base-patch32/snapshots/main` | CLIP模型本地路径 |
+| `HF_EMBEDDING_MODEL_NAME` | `BAAI/bge-large-en-v1.5` | HuggingFace嵌入模型名称（自动下载时使用） |
+| `HF_CLIP_MODEL_NAME` | `openai/clip-vit-base-patch32` | HuggingFace CLIP模型名称（自动下载时使用） |
+
+> **注意**：如果 `AUTO_DOWNLOAD_MODEL` 设为 `true`，当本地模型不存在时，应用会自动从 HuggingFace Hub 下载模型。首次部署时可能需要较长时间。
 
 #### 2.2.2 配置构建命令
 

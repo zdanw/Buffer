@@ -107,24 +107,34 @@ if not _initialized:
         upload_image_to_github = None
         convert_github_url_to_cdn = None
 
-    # 构建本地模型目录路径
-    local_model_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'models')
-
     # 尝试加载CLIP视觉模型（用于图片相似度计算）
     try:
         from transformers import CLIPProcessor, CLIPModel
         
-        local_model_path = os.path.join(local_model_dir, 'huggingface', 'hub', 'models--openai--clip-vit-base-patch32', 'snapshots', 'main')
+        local_model_path = Config.CLIP_MODEL_PATH
+        hf_model_name = Config.HF_CLIP_MODEL_NAME
         
-        clip_model = CLIPModel.from_pretrained(local_model_path, local_files_only=True)
-        clip_processor = CLIPProcessor.from_pretrained(local_model_path, local_files_only=True)
+        # 首先尝试从本地加载
+        if os.path.exists(local_model_path) and len(os.listdir(local_model_path)) > 0:
+            clip_model = CLIPModel.from_pretrained(local_model_path, local_files_only=True)
+            clip_processor = CLIPProcessor.from_pretrained(local_model_path, local_files_only=True)
+            logger.info(f"✅ CLIP模型从本地路径加载成功: {local_model_path}")
+        elif Config.AUTO_DOWNLOAD_MODEL:
+            # 本地模型不存在，从HuggingFace下载
+            logger.info(f"⚠️ 本地CLIP模型不存在，从HuggingFace下载: {hf_model_name}")
+            clip_model = CLIPModel.from_pretrained(hf_model_name)
+            clip_processor = CLIPProcessor.from_pretrained(hf_model_name)
+            logger.info(f"✅ CLIP模型从HuggingFace下载成功")
+        else:
+            raise Exception("本地模型不存在且未启用自动下载")
+        
         device = "cuda" if torch.cuda.is_available() else "cpu"
         clip_model = clip_model.to(device)
         clip_model.eval()
         CLIP_AVAILABLE = True
-        logger.info("✅ CLIP模型加载成功")
+        logger.info("✅ CLIP模型初始化完成")
     except Exception as e:
-        logger.warning(f"CLIP model loading failed: {e}, using fallback")
+        logger.warning(f"CLIP模型加载失败: {e}")
         CLIP_AVAILABLE = False
 
 

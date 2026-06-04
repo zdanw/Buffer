@@ -24,9 +24,32 @@ logger = get_logger(__name__)
 CHROMA_DIR = Config.CHROMA_DB_DIR
 LOCAL_EMBEDDING_MODEL_PATH = Config.LOCAL_EMBEDDING_MODEL_PATH
 
-sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(
-    model_name=LOCAL_EMBEDDING_MODEL_PATH
-)
+def create_embedding_function():
+    """
+    创建嵌入函数，优先从本地加载模型，如果本地不存在则从HuggingFace下载
+    """
+    try:
+        # 首先检查本地模型是否存在
+        if os.path.exists(LOCAL_EMBEDDING_MODEL_PATH) and len(os.listdir(LOCAL_EMBEDDING_MODEL_PATH)) > 0:
+            logger.info(f"✅ 使用本地嵌入模型: {LOCAL_EMBEDDING_MODEL_PATH}")
+            return embedding_functions.SentenceTransformerEmbeddingFunction(
+                model_name=LOCAL_EMBEDDING_MODEL_PATH
+            )
+        elif Config.AUTO_DOWNLOAD_MODEL:
+            # 本地模型不存在，从HuggingFace下载
+            hf_model_name = Config.HF_EMBEDDING_MODEL_NAME
+            logger.info(f"⚠️ 本地嵌入模型不存在，从HuggingFace下载: {hf_model_name}")
+            return embedding_functions.SentenceTransformerEmbeddingFunction(
+                model_name=hf_model_name
+            )
+        else:
+            logger.error("❌ 本地嵌入模型不存在且未启用自动下载")
+            raise Exception("嵌入模型不可用")
+    except Exception as e:
+        logger.error(f"❌ 创建嵌入函数失败: {e}")
+        raise
+
+sentence_transformer_ef = create_embedding_function()
 
 client = chromadb.PersistentClient(
     path=CHROMA_DIR,
