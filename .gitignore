@@ -15,11 +15,8 @@ env/
 data/
 !data/.gitkeep
 
-# 模型文件（保留huggingface模型和qwen3-embedding）
-# models/ 目录已包含在仓库中用于部署
-!models/
-models/huggingface/hub/**/.cache/
-models/*/.cache/
+# 模型文件（只忽略缓存目录）
+models/**/.cache/
 
 # IDE和系统文件
 .DS_Store
